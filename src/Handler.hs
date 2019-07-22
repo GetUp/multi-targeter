@@ -22,7 +22,7 @@ xmlResponse :: Text -> APIGatewayProxyResponse Text
 xmlResponse text = xmlResponseOk & responseBody ?~ text
 
 plivoResponse :: XML -> Text
-plivoResponse xml = LazyText.toStrict (renderText def $ document "Response" $ xml)
+plivoResponse = LazyText.toStrict . renderText def . document "Response"
 
 speak :: Text -> XML
 speak = Text.XML.Writer.element "Speak" . content
