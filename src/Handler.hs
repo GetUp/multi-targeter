@@ -2,14 +2,10 @@
 
 module Handler where
 
-import           AWSLambda.Events.APIGateway
-import           Control.Lens
-import qualified Data.ByteString.Lazy.Internal as BSL
-import qualified Data.HashMap.Strict           as HMS
-import           Data.Text
-import qualified Data.Text.Lazy                as LazyText
-import qualified Data.Text.Lazy.Encoding       as LazyText
-import Data.Aeson.TextValue
+import AWSLambda.Events.APIGateway
+import Control.Lens
+import Data.Text
+import qualified Data.Text.Lazy as LazyText
 import Text.XML
 import Text.XML.Writer
 
