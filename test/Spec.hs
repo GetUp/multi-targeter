@@ -8,8 +8,6 @@ import Control.Lens
 import Data.Aeson
 import qualified Data.HashMap.Strict as HashMap
 import Data.Text
-import AWSLambda.Events.APIGateway
-
 
 main :: IO ()
 main = hspec $ do
