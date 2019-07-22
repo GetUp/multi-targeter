@@ -26,7 +26,9 @@ dependencies:
 - bytestring
 - unordered-containers
 - text
-- wreq
+- aeson
+- xml-conduit-writer
+- xml-conduit
 
 library:
   source-dirs: src
@@ -52,3 +54,5 @@ tests:
     - -with-rtsopts=-N
     dependencies:
     - multi-targeter
+    - hspec
+    - aeson
