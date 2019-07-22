@@ -1,28 +1,18 @@
-{-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE TemplateHaskell   #-}
 
 module Main where
 
-import           AWSLambda
-import           Prelude.Compat
+import           AWSLambda.Events.APIGateway
+import           Control.Lens
+import           Data.Aeson
+import           Data.Aeson.Embedded
 
-import           Data.Aeson                 (Value, decode, encode)
-import           Data.Aeson.TH              (defaultOptions, deriveJSON)
-import qualified Data.ByteString.Lazy.Char8 as BL
+main = apiGatewayMain handler
 
-data Response =
-  Response
-    { statusCode :: Int
-    , body       :: String
-    }
-  deriving (Show)
-
-$(deriveJSON defaultOptions ''Response)
-
-main = lambdaMain handler
-
-handler :: Value -> IO String
-handler evt = do
-  let reply = Response {statusCode = 200, body = "<_-.-_>I'm working!</_-.-_>"}
-  pure $ BL.unpack (encode reply)
+handler ::
+     APIGatewayProxyRequest (Embedded Value)
+  -> IO (APIGatewayProxyResponse (Embedded [Char]))
+handler request = do
+  putStrLn "This should go to logs"
+  print $ request ^. requestBody
+  pure $ responseOK & responseBodyEmbedded ?~ "text"

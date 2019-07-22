@@ -23,8 +23,7 @@ dependencies:
 - base >= 4.7 && < 5
 - serverless-haskell
 - aeson
-- bytestring
-- base-compat
+- lens
 
 library:
   source-dirs: src
