@@ -4,5 +4,8 @@
   "dependencies": {
     "serverless": "^1.48.2",
     "serverless-haskell": "^0.8.8"
+  },
+  "devDependencies": {
+    "serverless-offline": "^5.8.0"
   }
 }

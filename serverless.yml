@@ -6,7 +6,13 @@ provider:
 
 functions:
   multiTargeter:
-    handler: Main.main
+    handler: multi-targeter.multi-targeter-exe
+    events:
+      - http:
+          integration: lambda-proxy
+          path: /
+          method: ANY
 
 plugins:
   - serverless-haskell
+  - serverless-offline
