@@ -15,12 +15,18 @@ import Text.XML.Writer
 
 handler :: APIGatewayProxyRequest Text -> IO (APIGatewayProxyResponse Text)
 handler _ = do
-  pure $ xmlResponse $ document "Response" $ do
-    Text.XML.Writer.element "Speak" $ content "Hello from haskell"
+  pure $ xmlResponse $ plivoResponse $ do
+    speak "Hello from haskell"
 
 xmlResponseOk :: APIGatewayProxyResponse body
 xmlResponseOk =
   APIGatewayProxyResponse 200 [("Content-Type", "text/xml")] Nothing
 
-xmlResponse :: Document -> APIGatewayProxyResponse Text
-xmlResponse doc = xmlResponseOk & responseBody ?~  LazyText.toStrict (renderText def doc)
+xmlResponse :: Text -> APIGatewayProxyResponse Text
+xmlResponse text = xmlResponseOk & responseBody ?~ text
+
+plivoResponse :: XML -> Text
+plivoResponse xml = LazyText.toStrict (renderText def $ document "Response" $ xml)
+
+speak :: Text -> XML
+speak = Text.XML.Writer.element "Speak" . content
