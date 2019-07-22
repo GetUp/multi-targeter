@@ -2,3 +2,4 @@
 .serverless/
 multi-targeter.cabal
 *~
+node_modules
