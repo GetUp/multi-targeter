@@ -1,0 +1,12 @@
+service: multi-targeter
+
+provider:
+  name: aws
+  runtime: haskell
+
+functions:
+  multiTargeter:
+    handler: Main.main
+
+plugins:
+  - serverless-haskell
