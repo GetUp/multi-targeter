@@ -22,3 +22,6 @@ main =
         it "returns hello world in xml" $ do
           reqResponse <- handler $ Mocks.request "/test/hello"
           reqResponse `shouldMatchBody` "<Speak>Hello from haskell</Speak>"
+        it "returns the root path" $ do
+          reqResponse <- handler $ Mocks.request "/"
+          reqResponse `shouldMatchBody` "<Speak>Root</Speak>"

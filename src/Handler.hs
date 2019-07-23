@@ -4,14 +4,20 @@ module Handler where
 
 import           AWSLambda.Events.APIGateway
 import           Control.Lens
+import           Data.ByteString.Internal
 import           Data.Text
 import qualified Data.Text.Lazy              as LazyText
 import           Text.XML
 import           Text.XML.Writer
 
 handler :: APIGatewayProxyRequest Text -> IO (APIGatewayProxyResponse Text)
-handler _ = do
-  pure $ xmlResponse $ plivoResponse $ do speak "Hello from haskell"
+handler request = do
+  let urlPath = unpackChars $ request ^. agprqPath
+  case urlPath of
+    "/test/hello" ->
+      pure $ xmlResponse $ plivoResponse $ do speak "Hello from haskell"
+    "/" -> pure $ xmlResponse $ plivoResponse $ do speak "Root"
+    _ -> pure $ xmlResponse "I'm awake!"
 
 xmlResponseOk :: APIGatewayProxyResponse body
 xmlResponseOk =
