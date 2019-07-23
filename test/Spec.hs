@@ -2,22 +2,23 @@
 {-# LANGUAGE QuasiQuotes       #-}
 
 import           AWSLambda.Events.APIGateway
-import           Control.Lens
+import           Data.Aeson.TextValue
 import           Data.Text
-import           Handler
 import           Test.Hspec
 
+import           Handler
 import           Mocks
 
-okXmlWithBody :: String -> APIGatewayProxyResponse Text
-okXmlWithBody text = xmlResponseOk & responseBody ?~ pack text
+shouldMatchBody :: APIGatewayProxyResponse Text -> Text -> Expectation
+shouldMatchBody (APIGatewayProxyResponse _ _ (Just (TextValue body))) fragment =
+  unpack body `shouldContain` unpack fragment
+shouldMatchBody _ _ = False `shouldBe` True
 
 main :: IO ()
 main =
   hspec $ do
     describe "Handler" $ do
       context "with an empty request" $ do
-        it "returns hello world in xml" $
-          handler Mocks.request `shouldReturn`
-          okXmlWithBody
-            "<?xml version=\"1.0\" encoding=\"UTF-8\"?><Response><Speak>Hello from haskell</Speak></Response>"
+        it "returns hello world in xml" $ do
+          reqResponse <- handler Mocks.request
+          reqResponse `shouldMatchBody` "<Speak>Hello from haskell</Speak>"
