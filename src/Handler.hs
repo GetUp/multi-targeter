@@ -2,17 +2,16 @@
 
 module Handler where
 
-import AWSLambda.Events.APIGateway
-import Control.Lens
-import Data.Text
-import qualified Data.Text.Lazy as LazyText
-import Text.XML
-import Text.XML.Writer
+import           AWSLambda.Events.APIGateway
+import           Control.Lens
+import           Data.Text
+import qualified Data.Text.Lazy              as LazyText
+import           Text.XML
+import           Text.XML.Writer
 
 handler :: APIGatewayProxyRequest Text -> IO (APIGatewayProxyResponse Text)
 handler _ = do
-  pure $ xmlResponse $ plivoResponse $ do
-    speak "Hello from haskell"
+  pure $ xmlResponse $ plivoResponse $ do speak "Hello from haskell"
 
 xmlResponseOk :: APIGatewayProxyResponse body
 xmlResponseOk =
