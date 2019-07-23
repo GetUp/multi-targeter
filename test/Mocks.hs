@@ -5,14 +5,15 @@ module Mocks where
 
 import           AWSLambda.Events.APIGateway
 import           Data.Aeson
+import qualified Data.ByteString.Internal    as BS
 import qualified Data.HashMap.Strict         as HashMap
 import           Data.Text
 
-request :: APIGatewayProxyRequest Text
-request =
+request :: String -> APIGatewayProxyRequest Text
+request path =
   APIGatewayProxyRequest
     { _agprqResource = "/{proxy+}"
-    , _agprqPath = "/test/hello"
+    , _agprqPath = BS.packChars path
     , _agprqHttpMethod = "GET"
     , _agprqHeaders =
         [ ("X-Forwarded-Proto", "https")

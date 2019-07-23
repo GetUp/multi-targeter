@@ -20,5 +20,5 @@ main =
     describe "Handler" $ do
       context "with an empty request" $ do
         it "returns hello world in xml" $ do
-          reqResponse <- handler Mocks.request
+          reqResponse <- handler $ Mocks.request "/test/hello"
           reqResponse `shouldMatchBody` "<Speak>Hello from haskell</Speak>"
