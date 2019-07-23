@@ -17,11 +17,24 @@ shouldMatchBody _ _ = False `shouldBe` True
 main :: IO ()
 main =
   hspec $ do
-    describe "Handler" $ do
-      context "with an empty request" $ do
-        it "returns hello world in xml" $ do
-          reqResponse <- handler $ Mocks.request "/test/hello"
-          reqResponse `shouldMatchBody` "<Speak>Hello from haskell</Speak>"
-        it "returns the root path" $ do
-          reqResponse <- handler $ Mocks.request "/"
-          reqResponse `shouldMatchBody` "<Speak>Root</Speak>"
+    describe "/connect" $ do
+      it "should give an intro and then redirect to the first call" $ do
+        reqResponse <- handler $ Mocks.request "/connect"
+        reqResponse `shouldMatchBody` "<Speak>Welcome to the Test Campaign.</Speak>"
+        reqResponse `shouldMatchBody` "<Redirect>http://localhost/call</Redirect>"
+
+    describe "/call" $ do
+      it "should dial the target number" $ do
+        reqResponse <- handler $ Mocks.request "/call"
+        reqResponse `shouldMatchBody` "<Speak>Calling the Sydney office.</Speak>"
+        reqResponse `shouldMatchBody` "<Dial action=\"http://localhost/survey\" hangupOnStart=\"true\"><Number>61285994347</Number></Dial>"
+
+    describe "/survey" $ do
+      it "should announce that the call has ended and redirect TODO: ask survey" $ do
+        reqResponse <- handler $ Mocks.request "/survey"
+        reqResponse `shouldMatchBody` "<Speak>The call has ended.</Speak>"
+        reqResponse `shouldMatchBody` "<Redirect>http://localhost/call</Redirect>"
+
+    describe "/disconnect" $ do
+      it "returns the root path" $ do
+        handler (Mocks.request "/disconnect") `shouldReturn` xmlResponseOk
