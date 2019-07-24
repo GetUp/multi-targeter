@@ -13,9 +13,6 @@ import           Text.XML.Writer
 
 handler :: APIGatewayProxyRequest Text -> IO (APIGatewayProxyResponse Text)
 handler request = do
-  conn <- connect connectInfo
-  [(targetName, targetNumber)] <-
-    (query_ conn randomTarget :: IO [(String, String)])
   let urlPath = BS.unpackChars $ request ^. agprqPath
   case urlPath of
     "/connect" ->
@@ -26,12 +23,15 @@ handler request = do
         speak
           "We will attempt to connect to you to one of their 40 offices. If someone picks up and you have conversation, afterwards we will ask you questions about how it went. You then have the option to try another office. Press the star key to hang up at any point during the conversation. Remember to be polite."
         redirect $ appUrl request "/call"
-    "/call" ->
+    "/call" -> do
+      conn <- connect connectInfo
+      [(targetName, targetNumber)] <-
+        (query_ conn randomTarget :: IO [(String, String)])
       pure $
-      xmlResponse $
-      plivoResponse $ do
-        speak $ "Calling the " <> (pack targetName)
-        dial (appUrl request "/survey") (pack targetNumber)
+        xmlResponse $
+        plivoResponse $ do
+          speak $ "Calling the " <> (pack targetName)
+          dial (appUrl request "/survey") (pack targetNumber)
     "/survey" ->
       pure $
       xmlResponse $
