@@ -15,16 +15,23 @@ handler request = do
   let urlPath = unpackChars $ request ^. agprqPath
   case urlPath of
     "/connect" ->
-      pure $ xmlResponse $ plivoResponse $ do
+      pure $
+      xmlResponse $
+      plivoResponse $ do
         speak "Welcome to the Test Campaign."
-        speak "We will attempt to connect to you to one of their 40 offices. If someone picks up and you have converstation, afterwards we will ask you questions about how it went. You then have the option to try another office. Press the star key to hang up at any point during the conversation. Remember to be polite."
+        speak
+          "We will attempt to connect to you to one of their 40 offices. If someone picks up and you have converstation, afterwards we will ask you questions about how it went. You then have the option to try another office. Press the star key to hang up at any point during the conversation. Remember to be polite."
         redirect $ appUrl request "/call"
     "/call" ->
-      pure $ xmlResponse $ plivoResponse $ do
+      pure $
+      xmlResponse $
+      plivoResponse $ do
         speak "Calling the Sydney office."
         dial (appUrl request "/survey") "61285994347"
     "/survey" ->
-      pure $ xmlResponse $ plivoResponse $ do
+      pure $
+      xmlResponse $
+      plivoResponse $ do
         speak "The call has ended."
         redirect $ appUrl request "/call"
     "/disconnect" -> pure $ xmlResponseOk
@@ -47,8 +54,9 @@ redirect :: Text -> XML
 redirect = Text.XML.Writer.element "Redirect" . content
 
 dial :: Text -> Text -> XML
-dial url number = Text.XML.Writer.elementA "Dial" [("action", url), ("hangupOnStart" , "true")] $ do
-  Text.XML.Writer.element "Number" $ content number
+dial url number =
+  Text.XML.Writer.elementA "Dial" [("action", url), ("hangupOnStart", "true")] $ do
+    Text.XML.Writer.element "Number" $ content number
 
 appUrl :: APIGatewayProxyRequest Text -> Text -> Text
 appUrl _ path = "http://localhost" <> path
