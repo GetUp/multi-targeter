@@ -10,8 +10,8 @@ functions:
     events:
       - http:
           integration: lambda-proxy
-          path: endpoint/{url}
-          method: ANY
+          path: /
+          method: POST
 
 plugins:
   - serverless-haskell

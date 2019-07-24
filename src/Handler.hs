@@ -58,9 +58,14 @@ dial url number =
   Text.XML.Writer.elementA "Dial" [("action", url), ("hangupOnStart", "true")] $ do
     Text.XML.Writer.element "Number" $ content number
 
+wrap :: BS.ByteString -> Text
+wrap s = pack $ BS.unpackChars s
+
 appUrl :: APIGatewayProxyRequest Text -> Text -> Text
 appUrl request path = do
   let headers = request ^. agprqHeaders
   case lookup "Host" headers of
-    Just host -> "https://" <> pack (BS.unpackChars host) <> path
-    Nothing   -> error "Hostname not found"
+    Nothing -> error "Hostname not found"
+    Just host -> do
+      let stage = request ^. agprqRequestContext ^. prcStage
+      "https://" <> wrap host <> "/" <> stage <> path
