@@ -10,7 +10,7 @@ functions:
     events:
       - http:
           integration: lambda-proxy
-          path: /
+          path: /{x}
           method: POST
 
 plugins:
