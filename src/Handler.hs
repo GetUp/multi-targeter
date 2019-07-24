@@ -20,7 +20,7 @@ handler request = do
       plivoResponse $ do
         speak "Welcome to the Test Campaign."
         speak
-          "We will attempt to connect to you to one of their 40 offices. If someone picks up and you have converstation, afterwards we will ask you questions about how it went. You then have the option to try another office. Press the star key to hang up at any point during the conversation. Remember to be polite."
+          "We will attempt to connect to you to one of their 40 offices. If someone picks up and you have conversation, afterwards we will ask you questions about how it went. You then have the option to try another office. Press the star key to hang up at any point during the conversation. Remember to be polite."
         redirect $ appUrl request "/call"
     "/call" ->
       pure $
