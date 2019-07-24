@@ -31,7 +31,7 @@ request path =
         , ( "User-Agent"
           , "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/52.0.2743.82 Safari/537.36 OPR/39.0.2256.48")
         , ("CloudFront-Is-Mobile-Viewer", "false")
-        , ("Host", "wt6mne2s9k.execute-api.us-west-2.amazonaws.com")
+        , ("Host", "apig.com")
         , ("X-Forwarded-Port", "443")
         , ("CloudFront-Is-SmartTV-Viewer", "false")
         , ( "Via"

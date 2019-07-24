@@ -4,7 +4,7 @@ module Handler where
 
 import           AWSLambda.Events.APIGateway
 import           Control.Lens
-import           Data.ByteString.Internal
+import qualified Data.ByteString.Internal    as BS
 import           Data.Text
 import qualified Data.Text.Lazy              as LazyText
 import           Text.XML
@@ -12,7 +12,7 @@ import           Text.XML.Writer
 
 handler :: APIGatewayProxyRequest Text -> IO (APIGatewayProxyResponse Text)
 handler request = do
-  let urlPath = unpackChars $ request ^. agprqPath
+  let urlPath = BS.unpackChars $ request ^. agprqPath
   case urlPath of
     "/connect" ->
       pure $
@@ -59,4 +59,8 @@ dial url number =
     Text.XML.Writer.element "Number" $ content number
 
 appUrl :: APIGatewayProxyRequest Text -> Text -> Text
-appUrl _ path = "http://localhost" <> path
+appUrl request path = do
+  let headers = request ^. agprqHeaders
+  case lookup "Host" headers of
+    Just host -> "https://" <> pack (BS.unpackChars host) <> path
+    Nothing   -> error "Hostname not found"
