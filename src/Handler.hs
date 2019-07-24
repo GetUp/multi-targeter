@@ -55,7 +55,7 @@ redirect = Text.XML.Writer.element "Redirect" . content
 
 dial :: Text -> Text -> XML
 dial url number =
-  Text.XML.Writer.elementA "Dial" [("action", url), ("hangupOnStart", "true")] $ do
+  Text.XML.Writer.elementA "Dial" [("action", url), ("hangupOnStar", "true")] $ do
     Text.XML.Writer.element "Number" $ content number
 
 wrap :: BS.ByteString -> Text
