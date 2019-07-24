@@ -7,11 +7,15 @@ import           Control.Lens
 import qualified Data.ByteString.Internal    as BS
 import           Data.Text
 import qualified Data.Text.Lazy              as LazyText
+import           Database.PostgreSQL.Simple
 import           Text.XML
 import           Text.XML.Writer
 
 handler :: APIGatewayProxyRequest Text -> IO (APIGatewayProxyResponse Text)
 handler request = do
+  conn <- connect connectInfo
+  [(targetName, targetNumber)] <-
+    (query_ conn randomTarget :: IO [(String, String)])
   let urlPath = BS.unpackChars $ request ^. agprqPath
   case urlPath of
     "/connect" ->
@@ -26,8 +30,8 @@ handler request = do
       pure $
       xmlResponse $
       plivoResponse $ do
-        speak "Calling the Sydney office."
-        dial (appUrl request "/survey") "61285994347"
+        speak $ "Calling the " <> (pack targetName)
+        dial (appUrl request "/survey") (pack targetNumber)
     "/survey" ->
       pure $
       xmlResponse $
@@ -36,6 +40,18 @@ handler request = do
         redirect $ appUrl request "/call"
     "/disconnect" -> pure $ xmlResponseOk
     _ -> pure $ xmlResponse "I'm awake!"
+
+connectInfo :: ConnectInfo
+connectInfo =
+  defaultConnectInfo
+    { connectHost = "localhost"
+    , connectDatabase = "multi_targeter"
+    , connectUser = ""
+    , connectPassword = ""
+    }
+
+randomTarget :: Query
+randomTarget = "select name, number from targets order by random() limit 1"
 
 xmlResponseOk :: APIGatewayProxyResponse body
 xmlResponseOk =

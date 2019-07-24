@@ -27,10 +27,9 @@ main =
     describe "/call" $ do
       it "should dial the target number" $ do
         reqResponse <- handler $ Mocks.request "/call"
+        reqResponse `shouldMatchBody` "<Speak>Calling the "
         reqResponse `shouldMatchBody`
-          "<Speak>Calling the Sydney office.</Speak>"
-        reqResponse `shouldMatchBody`
-          "<Dial action=\"https://apig.com/test/survey\" hangupOnStar=\"true\"><Number>61285994347</Number></Dial>"
+          "<Dial action=\"https://apig.com/test/survey\" hangupOnStar=\"true\"><Number>61"
     describe "/survey" $ do
       it "should announce that the call has ended and redirect TODO: ask survey" $ do
         reqResponse <- handler $ Mocks.request "/survey"

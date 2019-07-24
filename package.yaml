@@ -29,6 +29,7 @@ dependencies:
 - aeson
 - xml-conduit-writer
 - xml-conduit
+- postgresql-simple
 
 library:
   source-dirs: src
