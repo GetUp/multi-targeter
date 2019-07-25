@@ -4,6 +4,7 @@
 import           AWSLambda.Events.APIGateway
 import           Data.Aeson.TextValue
 import           Data.Text
+import           Database.PostgreSQL.Simple
 import           Test.Hspec
 
 import           Handler
@@ -15,8 +16,9 @@ shouldMatchBody (APIGatewayProxyResponse _ _ (Just (TextValue body))) fragment =
 shouldMatchBody _ _ = False `shouldBe` True
 
 main :: IO ()
-main =
-  hspec $ do
+main = do
+  conn <- connect connectInfo
+  hspec $ before_ (flushDb conn) $ do
     describe "/connect" $ do
       it "should give an intro and then redirect to the first call" $ do
         reqResponse <- handler $ Mocks.request "/connect"
@@ -26,10 +28,11 @@ main =
           "<Redirect>https://apig.com/test/call</Redirect>"
     describe "/call" $ do
       it "should dial the target number" $ do
+        _ <- execute conn "insert into targets (number, name) values (?, ?)" ("61400000000" :: String, "Test Target" :: String)
         reqResponse <- handler $ Mocks.request "/call"
-        reqResponse `shouldMatchBody` "<Speak>Calling the "
+        reqResponse `shouldMatchBody` "<Speak>Calling the Test Target"
         reqResponse `shouldMatchBody`
-          "<Dial action=\"https://apig.com/test/survey\" hangupOnStar=\"true\"><Number>61"
+          "<Dial action=\"https://apig.com/test/survey\" hangupOnStar=\"true\"><Number>61400000000"
     describe "/survey" $ do
       it "should announce that the call has ended and redirect TODO: ask survey" $ do
         reqResponse <- handler $ Mocks.request "/survey"
@@ -39,3 +42,8 @@ main =
     describe "/disconnect" $ do
       it "returns the root path" $ do
         handler (Mocks.request "/disconnect") `shouldReturn` xmlResponseOk
+
+flushDb :: Connection -> IO ()
+flushDb conn = do
+  _ <- execute_ conn "truncate targets"
+  return ()
