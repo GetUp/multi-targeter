@@ -14,6 +14,7 @@ import           Text.XML.Writer
 handler :: APIGatewayProxyRequest Text -> IO (APIGatewayProxyResponse Text)
 handler request = do
   let urlPath = BS.unpackChars $ request ^. agprqPath
+  let appUrl = buildAppUrl request
   case urlPath of
     "/connect" ->
       pure $
@@ -22,7 +23,7 @@ handler request = do
         speak "Welcome to the Test Campaign."
         speak
           "We will attempt to connect to you to one of their 40 offices. If someone picks up and you have conversation, afterwards we will ask you questions about how it went. You then have the option to try another office. Press the star key to hang up at any point during the conversation. Remember to be polite."
-        redirect $ appUrl request "/call"
+        redirect $ appUrl "/call"
     "/call" -> do
       conn <- connect connectInfo
       [(targetName, targetNumber)] <-
@@ -31,13 +32,13 @@ handler request = do
         xmlResponse $
         plivoResponse $ do
           speak $ "Calling the " <> (pack targetName)
-          dial (appUrl request "/survey") (pack targetNumber)
+          dial (appUrl "/survey") (pack targetNumber)
     "/survey" ->
       pure $
       xmlResponse $
       plivoResponse $ do
         speak "The call has ended."
-        redirect $ appUrl request "/call"
+        redirect $ appUrl "/call"
     "/disconnect" -> pure $ xmlResponseOk
     _ -> pure $ xmlResponse "I'm awake!"
 
@@ -77,8 +78,8 @@ dial url number =
 wrap :: BS.ByteString -> Text
 wrap s = pack $ BS.unpackChars s
 
-appUrl :: APIGatewayProxyRequest Text -> Text -> Text
-appUrl request path = do
+buildAppUrl :: APIGatewayProxyRequest Text -> Text -> Text
+buildAppUrl request path = do
   let headers = request ^. agprqHeaders
   case lookup "Host" headers of
     Nothing -> error "Hostname not found"
