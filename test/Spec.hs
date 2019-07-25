@@ -17,7 +17,8 @@ shouldMatchBody _ _ = False `shouldBe` True
 
 main :: IO ()
 main = do
-  conn <- connect connectInfo
+  url <- dbUrl
+  conn <- connectPostgreSQL url
   hspec $ before_ (flushDb conn) $ do
     describe "/connect" $ do
       it "should give an intro and then redirect to the first call" $ do

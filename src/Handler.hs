@@ -5,9 +5,11 @@ module Handler where
 import           AWSLambda.Events.APIGateway
 import           Control.Lens
 import qualified Data.ByteString.Internal    as BS
+import           Data.Maybe
 import           Data.Text
 import qualified Data.Text.Lazy              as LazyText
 import           Database.PostgreSQL.Simple
+import           System.Environment
 import           Text.XML
 import           Text.XML.Writer
 
@@ -25,7 +27,8 @@ handler request = do
           "We will attempt to connect to you to one of their 40 offices. If someone picks up and you have conversation, afterwards we will ask you questions about how it went. You then have the option to try another office. Press the star key to hang up at any point during the conversation. Remember to be polite."
         redirect $ appUrl "/call"
     "/call" -> do
-      conn <- connect connectInfo
+      url <- dbUrl
+      conn <- connectPostgreSQL url
       [(targetName, targetNumber)] <-
         (query_ conn randomTarget :: IO [(Text, Text)])
       pure $
@@ -42,14 +45,10 @@ handler request = do
     "/disconnect" -> pure $ xmlResponseOk
     _ -> pure $ xmlResponse "I'm awake!"
 
-connectInfo :: ConnectInfo
-connectInfo =
-  defaultConnectInfo
-    { connectHost = "localhost"
-    , connectDatabase = "multi_targeter"
-    , connectUser = ""
-    , connectPassword = ""
-    }
+dbUrl :: IO BS.ByteString
+dbUrl = do
+  envUrl <- lookupEnv "DATABASE_URL"
+  return $ BS.packChars $ fromMaybe "postgresql://localhost/multi_targeter" envUrl
 
 randomTarget :: Query
 randomTarget = "select name, number from targets order by random() limit 1"

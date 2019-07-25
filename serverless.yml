@@ -12,6 +12,8 @@ functions:
           integration: lambda-proxy
           path: /{x}
           method: POST
+    environment:
+      DATABASE_URL: ${env:DATABASE_URL}
 
 plugins:
   - serverless-haskell
