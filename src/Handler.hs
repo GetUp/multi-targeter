@@ -27,12 +27,12 @@ handler request = do
     "/call" -> do
       conn <- connect connectInfo
       [(targetName, targetNumber)] <-
-        (query_ conn randomTarget :: IO [(String, String)])
+        (query_ conn randomTarget :: IO [(Text, Text)])
       pure $
         xmlResponse $
         plivoResponse $ do
-          speak $ "Calling the " <> (pack targetName)
-          dial (appUrl "/survey") (pack targetNumber)
+          speak $ "Calling the " <> targetName
+          dial (appUrl "/survey") targetNumber
     "/survey" ->
       pure $
       xmlResponse $
