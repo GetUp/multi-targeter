@@ -2,16 +2,16 @@
 
 module Handler where
 
-import           AWSLambda.Events.APIGateway
-import           Control.Lens
-import qualified Data.ByteString.Internal    as BS
-import           Data.Maybe
-import           Data.Text
-import qualified Data.Text.Lazy              as LazyText
-import           Database.PostgreSQL.Simple
-import           System.Environment
-import           Text.XML
-import           Text.XML.Writer
+import AWSLambda.Events.APIGateway
+import Control.Lens
+import qualified Data.ByteString.Internal as BS
+import Data.Maybe
+import Data.Text
+import qualified Data.Text.Lazy as LazyText
+import Database.PostgreSQL.Simple
+import System.Environment
+import Text.XML
+import Text.XML.Writer
 
 handler :: APIGatewayProxyRequest Text -> IO (APIGatewayProxyResponse Text)
 handler request = do
@@ -29,8 +29,7 @@ handler request = do
     "/call" -> do
       url <- dbUrl
       conn <- connectPostgreSQL url
-      [(targetName, targetNumber)] <-
-        (query_ conn randomTarget :: IO [(Text, Text)])
+      [(targetName, targetNumber)] <- (query_ conn randomTarget :: IO [(Text, Text)])
       pure $
         xmlResponse $
         plivoResponse $ do
@@ -54,8 +53,7 @@ randomTarget :: Query
 randomTarget = "select name, number from targets order by random() limit 1"
 
 xmlResponseOk :: APIGatewayProxyResponse body
-xmlResponseOk =
-  APIGatewayProxyResponse 200 [("Content-Type", "text/xml")] Nothing
+xmlResponseOk = APIGatewayProxyResponse 200 [("Content-Type", "text/xml")] Nothing
 
 xmlResponse :: Text -> APIGatewayProxyResponse Text
 xmlResponse text = xmlResponseOk & responseBody ?~ text
