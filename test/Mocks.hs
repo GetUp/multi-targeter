@@ -1,13 +1,12 @@
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE QuasiQuotes       #-}
 
 module Mocks where
 
-import           AWSLambda.Events.APIGateway
-import           Data.Aeson
-import qualified Data.ByteString.Internal    as BS
-import qualified Data.HashMap.Strict         as HashMap
-import           Data.Text
+import AWSLambda.Events.APIGateway
+import Data.Aeson
+import qualified Data.ByteString.Internal as BS
+import qualified Data.HashMap.Strict as HashMap
+import Data.Text
 
 request :: String -> APIGatewayProxyRequest Text
 request path =
@@ -18,10 +17,8 @@ request path =
     , _agprqHeaders =
         [ ("X-Forwarded-Proto", "https")
         , ("CloudFront-Is-Desktop-Viewer", "true")
-        , ( "Accept"
-          , "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8")
-        , ( "X-Amz-Cf-Id"
-          , "nBsWBOrSHMgnaROZJK1wGCZ9PcRcSpq_oSXZNQwQ10OTZL4cimZo3g==")
+        , ("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8")
+        , ("X-Amz-Cf-Id", "nBsWBOrSHMgnaROZJK1wGCZ9PcRcSpq_oSXZNQwQ10OTZL4cimZo3g==")
         , ("Accept-Encoding", "gzip, deflate, lzma, sdch, br")
         , ("CloudFront-Forwarded-Proto", "https")
         , ("Accept-Language", "en-US,en;q=0.8")
@@ -34,14 +31,12 @@ request path =
         , ("Host", "apig.com")
         , ("X-Forwarded-Port", "443")
         , ("CloudFront-Is-SmartTV-Viewer", "false")
-        , ( "Via"
-          , "1.1 fb7cca60f0ecd82ce07790c9c5eef16c.cloudfront.net (CloudFront)")
+        , ("Via", "1.1 fb7cca60f0ecd82ce07790c9c5eef16c.cloudfront.net (CloudFront)")
         , ("X-Forwarded-For", "192.168.100.1, 192.168.1.1")
         ]
     , _agprqQueryStringParameters = [("name", Just "me")]
     , _agprqPathParameters = HashMap.fromList [("proxy", "hello")]
-    , _agprqStageVariables =
-        HashMap.fromList [("stageVarName", "stageVarValue")]
+    , _agprqStageVariables = HashMap.fromList [("stageVarName", "stageVarValue")]
     , _agprqRequestContext =
         ProxyRequestContext
           { _prcPath = Nothing
@@ -74,12 +69,8 @@ request path =
                 Authorizer
                   { _aPrincipalId = Just "test-principalId"
                   , _aClaims =
-                      HashMap.fromList
-                        [ ("email", toJSON ("test@example.com" :: Text))
-                        , ("email_verified", toJSON True)
-                        ]
-                  , _aContext =
-                      HashMap.fromList [("custom_context", toJSON (10 :: Int))]
+                      HashMap.fromList [("email", toJSON ("test@example.com" :: Text)), ("email_verified", toJSON True)]
+                  , _aContext = HashMap.fromList [("custom_context", toJSON (10 :: Int))]
                   }
           }
     , _agprqBody = Nothing

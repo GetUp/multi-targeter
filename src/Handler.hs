@@ -19,9 +19,7 @@ handler request = do
   let appUrl = buildAppUrl request
   case urlPath of
     "/connect" ->
-      pure $
-      xmlResponse $
-      plivoResponse $ do
+      pure $ xmlResponse $ plivoResponse $ do
         speak "Welcome to the Test Campaign."
         speak
           "We will attempt to connect to you to one of their 40 offices. If someone picks up and you have conversation, afterwards we will ask you questions about how it went. You then have the option to try another office. Press the star key to hang up at any point during the conversation. Remember to be polite."
@@ -29,19 +27,15 @@ handler request = do
     "/call" -> do
       url <- dbUrl
       conn <- connectPostgreSQL url
-      [(targetName, targetNumber)] <- (query_ conn randomTarget :: IO [(Text, Text)])
-      pure $
-        xmlResponse $
-        plivoResponse $ do
-          speak $ "Calling the " <> targetName
-          dial (appUrl "/survey") targetNumber
+      [(targetName, targetNumber)] <- query_ conn randomTarget :: IO [(Text, Text)]
+      pure $ xmlResponse $ plivoResponse $ do
+        speak $ "Calling the " <> targetName
+        dial (appUrl "/survey") targetNumber
     "/survey" ->
-      pure $
-      xmlResponse $
-      plivoResponse $ do
+      pure $ xmlResponse $ plivoResponse $ do
         speak "The call has ended."
         redirect $ appUrl "/call"
-    "/disconnect" -> pure $ xmlResponseOk
+    "/disconnect" -> pure xmlResponseOk
     _ -> pure $ xmlResponse "I'm awake!"
 
 dbUrl :: IO BS.ByteString
@@ -69,8 +63,9 @@ redirect = Text.XML.Writer.element "Redirect" . content
 
 dial :: Text -> Text -> XML
 dial url number =
-  Text.XML.Writer.elementA "Dial" [("action", url), ("hangupOnStar", "true")] $ do
-    Text.XML.Writer.element "Number" $ content number
+  let inner = Text.XML.Writer.element "Number" $ content number
+      options = [("action", url), ("hangupOnStar", "true")]
+   in Text.XML.Writer.elementA "Dial" options inner
 
 wrap :: BS.ByteString -> Text
 wrap s = pack $ BS.unpackChars s
@@ -81,5 +76,5 @@ buildAppUrl request path = do
   case lookup "Host" headers of
     Nothing -> error "Hostname not found"
     Just host -> do
-      let stage = request ^. agprqRequestContext ^. prcStage
+      let stage = request ^. agprqRequestContext . prcStage
       "https://" <> wrap host <> "/" <> stage <> path
