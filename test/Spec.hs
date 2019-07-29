@@ -23,9 +23,15 @@ main = do
     before_ (flushDb conn) $ do
       describe "/connect" $ do
         it "should give an intro and then redirect to the first call" $ do
-          reqResponse <- handler $ Mocks.request "/connect"
+          reqResponse <- handler $ Mocks.request "/connect?campaign_id=1"
           reqResponse `shouldMatchBody` "<Speak>Welcome to the Test Campaign.</Speak>"
           reqResponse `shouldMatchBody` "<Redirect>https://apig.com/test/call</Redirect>"
+        it "should create a caller record" $ do
+          handler $ Mocks.request "/connect"
+          [(callerNumber, campaign_id)] <-
+            (query_ conn "select number, campaign_id from callers limit 1" :: IO [(Text, Text)])
+          callerNumber `shouldBe` "61411111111"
+          campaign_id `shouldBe` 1
       describe "/call" $ do
         it "should dial the target number" $ do
           let testData = ("61400000000" :: String, "Test Target" :: String)
@@ -45,4 +51,5 @@ main = do
 flushDb :: Connection -> IO ()
 flushDb conn = do
   _ <- execute_ conn "truncate targets"
+  _ <- execute_ conn "truncate callers"
   return ()
