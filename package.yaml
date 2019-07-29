@@ -30,6 +30,7 @@ dependencies:
 - xml-conduit-writer
 - xml-conduit
 - postgresql-simple
+- http-types
 
 library:
   source-dirs: src
@@ -64,3 +65,4 @@ tests:
     - multi-targeter
     - hspec
     - aeson
+    - http-types

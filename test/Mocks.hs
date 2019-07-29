@@ -4,16 +4,22 @@ module Mocks where
 
 import AWSLambda.Events.APIGateway
 import Data.Aeson
+import Data.Aeson.TextValue
 import qualified Data.ByteString.Internal as BS
 import qualified Data.HashMap.Strict as HashMap
 import Data.Text
+import Data.Text.Encoding
+import Network.HTTP.Types.URI (SimpleQuery, renderSimpleQuery)
 
-request :: String -> APIGatewayProxyRequest Text
-request path =
+-- import Debug.Trace
+request :: String -> [(BS.ByteString, Maybe BS.ByteString)] -> SimpleQuery -> APIGatewayProxyRequest Text
+-- request _ _ body
+--   | trace ("Body:" <> (show (renderSimpleQuery False body))) False = undefined
+request path params body =
   APIGatewayProxyRequest
     { _agprqResource = "/{proxy+}"
     , _agprqPath = BS.packChars path
-    , _agprqHttpMethod = "GET"
+    , _agprqHttpMethod = "POST"
     , _agprqHeaders =
         [ ("X-Forwarded-Proto", "https")
         , ("CloudFront-Is-Desktop-Viewer", "true")
@@ -34,7 +40,7 @@ request path =
         , ("Via", "1.1 fb7cca60f0ecd82ce07790c9c5eef16c.cloudfront.net (CloudFront)")
         , ("X-Forwarded-For", "192.168.100.1, 192.168.1.1")
         ]
-    , _agprqQueryStringParameters = [("name", Just "me")]
+    , _agprqQueryStringParameters = params
     , _agprqPathParameters = HashMap.fromList [("proxy", "hello")]
     , _agprqStageVariables = HashMap.fromList [("stageVarName", "stageVarValue")]
     , _agprqRequestContext =
@@ -61,7 +67,7 @@ request path =
                 , _riUser = Just ""
                 }
           , _prcResourcePath = "/{proxy+}"
-          , _prcHttpMethod = "GET"
+          , _prcHttpMethod = "POST"
           , _prcApiId = "wt6mne2s9k"
           , _prcProtocol = "HTTP/1.1"
           , _prcAuthorizer =
@@ -73,5 +79,5 @@ request path =
                   , _aContext = HashMap.fromList [("custom_context", toJSON (10 :: Int))]
                   }
           }
-    , _agprqBody = Nothing
+    , _agprqBody = Just (TextValue (decodeUtf8 (renderSimpleQuery False body)))
     }
