@@ -14,7 +14,7 @@ create table targets (
   name text not null
 );
 
-drop table if exists callers if exists;
+drop table if exists callers;
 create table callers (
   id int primary key,
   campaign_id int not null references campaigns(id),
@@ -25,7 +25,7 @@ create table callers (
   call_uuid text
 );
 
-drop table if exists calls if exists;
+drop table if exists calls;
 create table calls (
   id int primary key,
   caller_id int not null references callers(id),
