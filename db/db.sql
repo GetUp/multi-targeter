@@ -1,22 +1,22 @@
-drop table if exists campaigns;
+drop table if exists campaigns cascade;
 create table campaigns (
-  id int primary key,
+  id serial primary key,
   status text not null,
   name text not null,
   instructions text not null
 );
 
-drop table if exists targets;
+drop table if exists targets cascade;
 create table targets (
-  id int primary key,
+  id serial primary key,
   campaign_id int not null references campaigns(id),
-  phone varchar(11),
+  number text not null,
   name text not null
 );
 
-drop table if exists callers;
+drop table if exists callers cascade;
 create table callers (
-  id int primary key,
+  id serial primary key,
   campaign_id int not null references campaigns(id),
   number text not null,
   created_at timestamp with time zone not null,
@@ -25,9 +25,9 @@ create table callers (
   call_uuid text
 );
 
-drop table if exists calls;
+drop table if exists calls cascade;
 create table calls (
-  id int primary key,
+  id serial primary key,
   caller_id int not null references callers(id),
   target_id int not null references targets(id),
   created_at timestamp with time zone not null,

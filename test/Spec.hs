@@ -19,22 +19,22 @@ main = do
   url <- dbUrl
   conn <- connectPostgreSQL url
   hspec $
-    before_ (flushDb conn) $ do
+    before_ (setupDb conn) $ do
       describe "/connect" $ do
         it "should give an intro and then redirect to the first call" $ do
-          reqResponse <- handler $ Mocks.request "/connect?campaign_id=1"
+          reqResponse <- handler $ Mocks.request "/connect"
           reqResponse `shouldMatchBody` "<Speak>Welcome to the Test Campaign.</Speak>"
           reqResponse `shouldMatchBody` "<Redirect>https://apig.com/test/call</Redirect>"
         it "should create a caller record" $ do
-          handler $ Mocks.request "/connect"
+          _ <- handler $ Mocks.request "/connect"
           [(callerNumber, campaign_id)] <-
             query_ conn "select number, campaign_id from callers limit 1" :: IO [(Text, Text)]
           callerNumber `shouldBe` "61411111111"
-          campaign_id `shouldBe` 1
+          campaign_id `shouldBe` "1"
       describe "/call" $
         it "should dial the target number" $ do
-          let testData = ("61400000000" :: String, "Test Target" :: String)
-          _ <- execute conn "insert into targets (number, name) values (?, ?)" testData
+          let testData = ("1" :: String, "61400000000" :: String, "Test Target" :: String)
+          _ <- execute conn "insert into targets (campaign_id, number, name) values (?, ?, ?)" testData
           reqResponse <- handler $ Mocks.request "/call"
           reqResponse `shouldMatchBody` "<Speak>Calling the Test Target"
           reqResponse `shouldMatchBody`
@@ -47,8 +47,15 @@ main = do
       describe "/disconnect" $
         it "returns the root path" $ handler (Mocks.request "/disconnect") `shouldReturn` xmlResponseOk
 
+setupDb :: Connection -> IO ()
+setupDb conn = do
+  flushDb conn
+  -- let campaign = ("active" :: String, "Test Campaign" :: String, "Test instructions" :: String)
+  -- _ <- execute conn "insert into campaigns (status, name, instructions) values (?, ?, ?)" campaign
+  return ()
+
 flushDb :: Connection -> IO ()
 flushDb conn = do
-  _ <- execute_ conn "truncate targets"
-  _ <- execute_ conn "truncate callers"
+  _ <- execute_ conn "truncate targets cascade"
+  _ <- execute_ conn "truncate callers cascade"
   return ()
