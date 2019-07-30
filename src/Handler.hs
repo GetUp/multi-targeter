@@ -34,8 +34,10 @@ handler request = do
         speak
           "We will attempt to connect to you to one of their 40 offices. If someone picks up and you have conversation, afterwards we will ask you questions about how it went. You then have the option to try another office. Press the star key to hang up at any point during the conversation. Remember to be polite."
         redirect $ appUrl "/call"
-    ("/call", _) -> do
-      [(targetName, targetNumber)] <- query_ conn randomTarget :: IO [(Text, Text)]
+    ("/call", Params {callUuidParam = Just callUuid}) -> do
+      [Only callerId] <- selectCaller conn callUuid
+      [(targetId, targetName, targetNumber)] <- selectTarget conn
+      _ <- insertCall conn (callerId, targetId, callUuid)
       pure $ xmlResponse $ plivoResponse $ do
         speak $ "Calling the " <> targetName
         dial (appUrl "/survey") targetNumber
@@ -81,8 +83,17 @@ lookupBody request param = do
   let params = parseSimpleQuery $ encodeUtf8 body
   lookup param params
 
-randomTarget :: Query
-randomTarget = "select name, number from targets order by random() limit 1"
+selectTarget :: Connection -> IO [(Int, Text, Text)]
+selectTarget conn =
+  query_ conn "select id, name, number from targets order by random() limit 1" :: IO [(Int, Text, Text)]
+
+selectCaller :: Connection -> BS.ByteString -> IO [Only Int]
+selectCaller conn callUuid = query conn "select id from callers where call_uuid = ? limit 1" [callUuid] :: IO [Only Int]
+
+insertCall :: Connection -> (Int, Int, BS.ByteString) -> IO ()
+insertCall conn call = do
+  _ <- execute conn "insert into calls (caller_id, target_id, call_uuid, created_at) values (?, ?, ?, now())" call
+  return ()
 
 insertCaller :: Query
 insertCaller = "insert into callers (number, campaign_id, call_uuid, created_at) values (?, ?, ?, now())"

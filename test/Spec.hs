@@ -12,7 +12,8 @@ import Mocks
 shouldMatchBody :: APIGatewayProxyResponse Text -> Text -> Expectation
 shouldMatchBody (APIGatewayProxyResponse _ _ (Just (TextValue body))) fragment =
   unpack body `shouldContain` unpack fragment
-shouldMatchBody _ _ = False `shouldBe` True
+shouldMatchBody (APIGatewayProxyResponse 404 _ _) _ = error "response was 404"
+shouldMatchBody _ _ = error "Request was probably malformed"
 
 main :: IO ()
 main = do
@@ -35,13 +36,20 @@ main = do
           campaign_id `shouldBe` 1
           callUuid `shouldBe` "xxxxx"
       describe "/call" $
-        it "should dial the target number" $ do
-          let testData = ("1" :: String, "61400000000" :: String, "Test Target" :: String)
-          _ <- execute conn "insert into targets (campaign_id, number, name) values (?, ?, ?)" testData
-          reqResponse <- handler $ Mocks.request "/call" [] []
-          reqResponse `shouldMatchBody` "<Speak>Calling the Test Target"
-          reqResponse `shouldMatchBody`
-            "<Dial action=\"https://apig.com/test/survey\" hangupOnStar=\"true\"><Number>61400000000"
+        before_ (callEndpointSetup conn) $ do
+          let postParams = [("CallUUID", "xxxxx"), ("From", "61411111111")]
+          it "should dial the target number" $ do
+            reqResponse <- handler $ Mocks.request "/call" [] postParams
+            reqResponse `shouldMatchBody` "<Speak>Calling the Test Target"
+            reqResponse `shouldMatchBody`
+              "<Dial action=\"https://apig.com/test/survey\" hangupOnStar=\"true\"><Number>61400000000"
+          it "should log the call" $ do
+            _ <- handler $ Mocks.request "/call" [] postParams
+            [(caller_id, target_id, call_uuid)] <-
+              query_ conn "select caller_id, target_id, call_uuid from calls limit 1" :: IO [(Int, Int, Text)]
+            caller_id `shouldBe` 5
+            target_id `shouldBe` 1
+            call_uuid `shouldBe` "xxxxx"
       describe "/survey" $
         it "should announce that the call has ended and redirect TODO: ask survey" $ do
           reqResponse <- handler $ Mocks.request "/survey" [] []
@@ -59,8 +67,29 @@ main = do
               [callUuid]
           _ <- handler $ Mocks.request "/disconnect" [] postParams
           [Only duration] <-
-            (query conn "select duration from callers where call_uuid = ? and ended_at is not null limit 1" [callUuid]) :: IO [Only Int]
+            query conn "select duration from callers where call_uuid = ? and ended_at is not null limit 1" [callUuid] :: IO [Only Int]
           duration `shouldBe` 23
+
+callEndpointSetup :: Connection -> IO ()
+callEndpointSetup conn = do
+  insertTestCaller conn
+  insertTestTarget conn
+
+insertTestCaller :: Connection -> IO ()
+insertTestCaller conn = do
+  let testCaller = (5 :: Int, 1 :: Int, "61411111111" :: String, "xxxxx" :: String)
+  _ <-
+    execute
+      conn
+      "insert into callers (id, campaign_id, number, call_uuid, created_at) values (?, ?, ?, ?, now())"
+      testCaller
+  return ()
+
+insertTestTarget :: Connection -> IO ()
+insertTestTarget conn = do
+  let testTarget = (1 :: Int, "61400000000" :: String, "Test Target" :: String)
+  _ <- execute conn "insert into targets (campaign_id, number, name) values (?, ?, ?)" testTarget
+  return ()
 
 setupDb :: Connection -> IO ()
 setupDb conn = do
