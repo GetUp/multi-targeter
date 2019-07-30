@@ -3,3 +3,4 @@
 multi-targeter.cabal
 *~
 node_modules
+.hspec-failures
