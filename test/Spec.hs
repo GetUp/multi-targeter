@@ -2,6 +2,7 @@
 
 import AWSLambda.Events.APIGateway
 import Data.Aeson.TextValue
+import qualified Data.ByteString.Internal as BS
 import Data.Text
 import Database.PostgreSQL.Simple
 import Test.Hspec
@@ -36,25 +37,46 @@ main = do
           campaign_id `shouldBe` 1
           callUuid `shouldBe` "xxxxx"
       describe "/call" $
-        before_ (callEndpointSetup conn) $ do
+        before_ (callEndpointSetup conn 5) $ do
           let postParams = [("CallUUID", "xxxxx"), ("From", "61411111111")]
           it "should dial the target number" $ do
             reqResponse <- handler $ Mocks.request "/call" [] postParams
+            [Only callId] <- query_ conn "select id from calls order by created_at desc limit 1" :: IO [Only Int]
             reqResponse `shouldMatchBody` "<Speak>Calling the Test Target"
             reqResponse `shouldMatchBody`
-              "<Dial action=\"https://apig.com/test/survey\" hangupOnStar=\"true\"><Number>61400000000"
+              ("<Dial action=\"https://apig.com/test/survey?call_id=" <> tShow callId <>
+               "\" hangupOnStar=\"true\"><Number>61400000000")
           it "should log the call" $ do
             _ <- handler $ Mocks.request "/call" [] postParams
-            [(caller_id, target_id, call_uuid)] <-
-              query_ conn "select caller_id, target_id, call_uuid from calls limit 1" :: IO [(Int, Int, Text)]
+            [(caller_id, target_id)] <- query_ conn "select caller_id, target_id from calls limit 1" :: IO [(Int, Int)]
             caller_id `shouldBe` 5
             target_id `shouldBe` 1
-            call_uuid `shouldBe` "xxxxx"
-      describe "/survey" $
-        it "should announce that the call has ended and redirect TODO: ask survey" $ do
-          reqResponse <- handler $ Mocks.request "/survey" [] []
-          reqResponse `shouldMatchBody` "<Speak>The call has ended.</Speak>"
-          reqResponse `shouldMatchBody` "<Redirect>https://apig.com/test/call</Redirect>"
+      describe "/survey" $ do
+        let callerId = 15
+        let postParams =
+              [ ("DialALegUUID", "xxxxx")
+              , ("DialBLegUUID", "yyyyy")
+              , ("DialHangupCause", "NORMAL_CLEARING")
+              , ("DialStatus", "completed")
+              ]
+        before_ (surveyEndpointSetup conn callerId) $ do
+          it "should update the call record" $ do
+            [Only callId] <- insertTestCall conn callerId
+            let queryParams = [("call_id", Just $ bShow callId)]
+            _ <- handler $ Mocks.request "/survey" queryParams postParams
+            let callQuery =
+                  query conn "select target_id, status, hangup_cause, call_uuid from calls where id = ?" [callId]
+            [(target_id, status, hangup_cause, call_uuid)] <- callQuery :: IO [(Int, Text, Text, Text)]
+            target_id `shouldBe` 1
+            status `shouldBe` "completed"
+            hangup_cause `shouldBe` "NORMAL_CLEARING"
+            call_uuid `shouldBe` "yyyyy"
+          it "should announce that the call has ended and redirect TODO: ask survey" $ do
+            [Only callId] <- insertTestCall conn callerId
+            let queryParams = [("call_id", Just $ bShow callId)]
+            reqResponse <- handler $ Mocks.request "/survey" queryParams postParams
+            reqResponse `shouldMatchBody` "<Speak>The call has ended.</Speak>"
+            reqResponse `shouldMatchBody` "<Redirect>https://apig.com/test/call</Redirect>"
       describe "/disconnect" $ do
         let callUuid = "xxx"
         let postParams = [("CallUUID", callUuid), ("Duration", "23")]
@@ -70,14 +92,25 @@ main = do
             query conn "select duration from callers where call_uuid = ? and ended_at is not null limit 1" [callUuid] :: IO [Only Int]
           duration `shouldBe` 23
 
-callEndpointSetup :: Connection -> IO ()
-callEndpointSetup conn = do
-  insertTestCaller conn
+callEndpointSetup :: Connection -> Int -> IO ()
+callEndpointSetup conn callerId = do
+  insertTestCaller conn callerId
   insertTestTarget conn
 
-insertTestCaller :: Connection -> IO ()
-insertTestCaller conn = do
-  let testCaller = (5 :: Int, 1 :: Int, "61411111111" :: String, "xxxxx" :: String)
+surveyEndpointSetup :: Connection -> Int -> IO ()
+surveyEndpointSetup conn callerId = do
+  insertTestCaller conn callerId
+  insertTestTarget conn
+  -- insertTestCall conn callerId
+
+insertTestCall :: Connection -> Int -> IO [Only Int]
+insertTestCall conn callerId = do
+  let testCall = (callerId, 1 :: Int)
+  query conn "insert into calls (caller_id, target_id, created_at) values (?, ?, now()) returning id" testCall :: IO [Only Int]
+
+insertTestCaller :: Connection -> Int -> IO ()
+insertTestCaller conn callerId = do
+  let testCaller = (callerId, 1 :: Int, "61411111111" :: String, "xxxxx" :: String)
   _ <-
     execute
       conn
@@ -102,3 +135,6 @@ flushDb :: Connection -> IO ()
 flushDb conn = do
   _ <- execute_ conn "truncate targets, calls, callers, campaigns RESTART IDENTITY"
   return ()
+
+bShow :: Int -> BS.ByteString
+bShow = BS.packChars . show

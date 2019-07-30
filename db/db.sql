@@ -31,6 +31,8 @@ create table calls (
   caller_id int not null references callers(id),
   target_id int not null references targets(id),
   created_at timestamp with time zone not null,
+  status text,
+  hangup_cause text,
   ended_at timestamp with time zone,
   duration int,
   call_uuid text

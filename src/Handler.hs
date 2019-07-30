@@ -37,11 +37,16 @@ handler request = do
     ("/call", Params {callUuidParam = Just callUuid}) -> do
       [Only callerId] <- selectCaller conn callUuid
       [(targetId, targetName, targetNumber)] <- selectTarget conn
-      _ <- insertCall conn (callerId, targetId, callUuid)
+      [Only callId] <- insertCall conn (callerId, targetId)
       pure $ xmlResponse $ plivoResponse $ do
         speak $ "Calling the " <> targetName
-        dial (appUrl "/survey") targetNumber
-    ("/survey", _) ->
+        dial (appUrl "/survey?call_id=" <> tShow callId) targetNumber
+    ("/survey", Params { callIdParam = Just callId
+                       , dialBLegUUIDParam = Just dialBLegUUID
+                       , dialHangupCauseParam = Just dialHangupCause
+                       , dialStatusParam = Just dialStatus
+                       }) -> do
+      _ <- updateCall conn (dialBLegUUID, dialHangupCause, dialStatus, callId)
       pure $ xmlResponse $ plivoResponse $ do
         speak "The call has ended."
         redirect $ appUrl "/call"
@@ -61,6 +66,10 @@ data Params =
     , fromNumberParam :: Maybe BS.ByteString
     , callUuidParam :: Maybe BS.ByteString
     , durationParam :: Maybe BS.ByteString
+    , callIdParam :: Maybe BS.ByteString
+    , dialBLegUUIDParam :: Maybe BS.ByteString
+    , dialHangupCauseParam :: Maybe BS.ByteString
+    , dialStatusParam :: Maybe BS.ByteString
     }
 
 buildParams :: APIGatewayProxyRequest Text -> Params
@@ -70,6 +79,10 @@ buildParams request =
     , fromNumberParam = lookupBody request "From"
     , callUuidParam = lookupBody request "CallUUID"
     , durationParam = lookupBody request "Duration"
+    , callIdParam = lookupParam request "call_id"
+    , dialBLegUUIDParam = lookupBody request "DialBLegUUID"
+    , dialHangupCauseParam = lookupBody request "DialHangupCause"
+    , dialStatusParam = lookupBody request "DialStatus"
     }
 
 lookupParam :: APIGatewayProxyRequest Text -> BS.ByteString -> Maybe BS.ByteString
@@ -90,9 +103,17 @@ selectTarget conn =
 selectCaller :: Connection -> BS.ByteString -> IO [Only Int]
 selectCaller conn callUuid = query conn "select id from callers where call_uuid = ? limit 1" [callUuid] :: IO [Only Int]
 
-insertCall :: Connection -> (Int, Int, BS.ByteString) -> IO ()
-insertCall conn call = do
-  _ <- execute conn "insert into calls (caller_id, target_id, call_uuid, created_at) values (?, ?, ?, now())" call
+insertCall :: Connection -> (Int, Int) -> IO [Only Int]
+insertCall conn call =
+  query conn "insert into calls (caller_id, target_id, created_at) values (?, ?, now()) returning id" call :: IO [Only Int]
+
+updateCall :: Connection -> (BS.ByteString, BS.ByteString, BS.ByteString, BS.ByteString) -> IO ()
+updateCall conn callParams = do
+  _ <-
+    execute
+      conn
+      "update calls set call_uuid = ?, hangup_cause = ?, status = ?, ended_at = now() where id = ?"
+      callParams
   return ()
 
 insertCaller :: Query
@@ -124,6 +145,9 @@ dial url number =
   let inner = Text.XML.Writer.element "Number" $ content number
       options = [("action", url), ("hangupOnStar", "true")]
    in Text.XML.Writer.elementA "Dial" options inner
+
+tShow :: Int -> Text
+tShow = pack . show
 
 wrap :: BS.ByteString -> Text
 wrap s = pack $ BS.unpackChars s
