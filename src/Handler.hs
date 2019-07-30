@@ -4,6 +4,7 @@ module Handler where
 
 import AWSLambda.Events.APIGateway
 import Control.Lens
+import Control.Monad
 import qualified Data.ByteString.Internal as BS
 import Data.Maybe
 import Data.Text
@@ -81,8 +82,7 @@ buildParams request =
 lookupParam :: APIGatewayProxyRequest Text -> BS.ByteString -> Maybe BS.ByteString
 lookupParam request param = do
   let params = request ^. agprqQueryStringParameters
-  campaignIdParam1 <- lookup param params
-  campaignIdParam1
+  join $ lookup param params
 
 lookupBody :: APIGatewayProxyRequest Text -> BS.ByteString -> Maybe BS.ByteString
 lookupBody request param = do
