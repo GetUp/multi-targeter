@@ -18,14 +18,14 @@ import Text.XML.Writer
 
 handler :: APIGatewayProxyRequest Text -> IO (APIGatewayProxyResponse Text)
 handler request = do
-  let urlPath = BS.unpackChars $ request ^. agprqPath
   let appUrl = buildAppUrl request
-  let campaignIdParam = lookupParam request "campaign_id"
-  let fromParam = lookupBody request "From"
-  let callUuidParam = lookupBody request "CallUUID"
-  let durationParam = lookupBody request "Duration"
-  case (urlPath, campaignIdParam, fromParam, callUuidParam, durationParam) of
-    ("/connect", Just campaignId, Just fromNumber, Just callUuid, _) -> do
+  let urlPath = BS.unpackChars $ request ^. agprqPath
+  let params = buildParams request
+  case (urlPath, params) of
+    ("/connect", Params { campaignIdParam = Just campaignId
+                        , fromNumberParam = Just fromNumber
+                        , callUuidParam = Just callUuid
+                        }) -> do
       url <- dbUrl
       conn <- connectPostgreSQL url
       _ <-
@@ -38,34 +38,51 @@ handler request = do
         speak
           "We will attempt to connect to you to one of their 40 offices. If someone picks up and you have conversation, afterwards we will ask you questions about how it went. You then have the option to try another office. Press the star key to hang up at any point during the conversation. Remember to be polite."
         redirect $ appUrl "/call"
-    ("/call", _, _, _, _) -> do
+    ("/call", _) -> do
       url <- dbUrl
       conn <- connectPostgreSQL url
       [(targetName, targetNumber)] <- query_ conn randomTarget :: IO [(Text, Text)]
       pure $ xmlResponse $ plivoResponse $ do
         speak $ "Calling the " <> targetName
         dial (appUrl "/survey") targetNumber
-    ("/survey", _, _, _, _) ->
+    ("/survey", _) ->
       pure $ xmlResponse $ plivoResponse $ do
         speak "The call has ended."
         redirect $ appUrl "/call"
-    ("/disconnect", _, _, Just callUuid, Just duration) -> do
+    ("/disconnect", Params {callUuidParam = Just callUuid, durationParam = Just duration}) -> do
       url <- dbUrl
       conn <- connectPostgreSQL url
       _ <- execute conn "update callers set ended_at = now(), duration = ? where call_uuid = ?" (duration, callUuid)
       pure xmlResponseOk
-    (_, _, _, _, _) -> pure $ response404
+    (_, _) -> pure $ response404
 
 dbUrl :: IO BS.ByteString
 dbUrl = do
   envUrl <- lookupEnv "DATABASE_URL"
   return $ BS.packChars $ fromMaybe "postgresql://localhost/multi_targeter" envUrl
 
+data Params =
+  Params
+    { campaignIdParam :: Maybe BS.ByteString
+    , fromNumberParam :: Maybe BS.ByteString
+    , callUuidParam :: Maybe BS.ByteString
+    , durationParam :: Maybe BS.ByteString
+    }
+
+buildParams :: APIGatewayProxyRequest Text -> Params
+buildParams request =
+  Params
+    { campaignIdParam = lookupParam request "campaign_id"
+    , fromNumberParam = lookupBody request "From"
+    , callUuidParam = lookupBody request "CallUUID"
+    , durationParam = lookupBody request "Duration"
+    }
+
 lookupParam :: APIGatewayProxyRequest Text -> BS.ByteString -> Maybe BS.ByteString
 lookupParam request param = do
   let params = request ^. agprqQueryStringParameters
-  campaignIdParam <- lookup param params
-  campaignIdParam
+  campaignIdParam1 <- lookup param params
+  campaignIdParam1
 
 lookupBody :: APIGatewayProxyRequest Text -> BS.ByteString -> Maybe BS.ByteString
 lookupBody request param = do
