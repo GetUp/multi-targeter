@@ -56,8 +56,11 @@ handler request = do
         _ -> pure $ xmlResponse $ plivoResponse $ redirect $ appUrl "/call"
     ("/survey_response", Params {callIdParam = Just callId, digitsParam = Just digits}) -> do
       _ <- recordOutcome conn (outcomeText digits, callId)
-      pure $ xmlResponse $ plivoResponse $ callAgainDigits (appUrl "/call") $
-        speak "Meaningful conversation. Press 1 to call again."
+      pure $ xmlResponse $ plivoResponse $ do
+        let callUrl = appUrl "/call"
+        callAgainDigits callUrl $ speak "Meaningful conversation. Press 1 to call again."
+        redirect $ appUrl "/thanks"
+    ("/thanks", _) -> pure $ xmlResponse $ plivoResponse $ speak "Thanks for calling. Goodbye."
     ("/disconnect", Params {callUuidParam = Just callUuid, durationParam = Just duration}) -> do
       _ <- execute conn updateCaller (duration, callUuid)
       pure xmlResponseOk

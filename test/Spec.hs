@@ -92,13 +92,13 @@ main = do
             _ <- handler $ Mocks.request "/survey_response" queryParams (postParams 1)
             [Only outcome] <- query conn "select outcome from calls where id = ?" [callId] :: IO [Only Text]
             outcome `shouldBe` "conversation"
-          it "should allow 1 (and only 1) to be pressed to call again" $ do
+          it "should allow 1 (and only 1) to be pressed to call again then redirect to /thanks" $ do
             [Only callId] <- insertTestCall conn callerId
             let queryParams = [("call_id", Just $ bShow callId)]
             reqResponse <- handler $ Mocks.request "/survey_response" queryParams (postParams 1)
             reqResponse `shouldMatchBody` "<GetDigits action=\"https://apig.com/test/call\""
             reqResponse `shouldMatchBody` "validDigits=\"1\""
-          -- it "should redirect to /thanks"
+            reqResponse `shouldMatchBody` "</GetDigits><Redirect>https://apig.com/test/thanks</Redirect>"
       describe "/disconnect" $ do
         let callUuid = "xxx"
         let postParams = [("CallUUID", callUuid), ("Duration", "23")]
