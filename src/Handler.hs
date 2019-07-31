@@ -56,7 +56,7 @@ handler request = do
         _ -> pure $ xmlResponse $ plivoResponse $ redirect $ appUrl "/call"
     ("/survey_response", Params {callIdParam = Just callId, digitsParam = Just digits}) -> do
       _ <- recordOutcome conn (outcomeText digits, callId)
-      pure $ xmlResponse $ plivoResponse $ getDigits (appUrl "/call") $
+      pure $ xmlResponse $ plivoResponse $ callAgainDigits (appUrl "/call") $
         speak "Meaningful conversation. Press 1 to call again."
     ("/disconnect", Params {callUuidParam = Just callUuid, durationParam = Just duration}) -> do
       _ <- execute conn updateCaller (duration, callUuid)
@@ -158,6 +158,11 @@ plivoResponse = LazyText.toStrict . renderText def . document "Response"
 
 speak :: Text -> XML
 speak = Text.XML.Writer.element "Speak" . content
+
+callAgainDigits :: Text -> XML -> XML
+callAgainDigits url inner =
+  let options = [("action", url), ("numDigits", "1"), ("retries", "1"), ("validDigits", "1")]
+   in Text.XML.Writer.elementA "GetDigits" options inner
 
 getDigits :: Text -> XML -> XML
 getDigits url inner =
