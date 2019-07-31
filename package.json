@@ -9,6 +9,6 @@
     "serverless-offline": "^5.8.0"
   },
   "scripts": {
-    "start": "ghcid --command='stack ghci multi-targeter:test:multi-targeter-test' --test=main"
+    "start": "ghcid --command='stack ghci src/Handler.hs test/Spec.hs' --test=main"
   }
 }
