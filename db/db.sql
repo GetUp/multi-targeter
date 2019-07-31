@@ -35,5 +35,6 @@ create table calls (
   hangup_cause text,
   ended_at timestamp with time zone,
   duration int,
-  call_uuid text
+  call_uuid text,
+  outcome text
 );

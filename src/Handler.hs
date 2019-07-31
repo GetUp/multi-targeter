@@ -54,6 +54,10 @@ handler request = do
               speak
                 "The call has ended. If you had a meaningful conversation, press 1. If you were hung up on, press 2."
         _ -> pure $ xmlResponse $ plivoResponse $ redirect $ appUrl "/call"
+    ("/survey_response", Params {callIdParam = Just callId, digitsParam = Just digits}) -> do
+      _ <- recordOutcome conn (outcomeText digits, callId)
+      pure $ xmlResponse $ plivoResponse $ getDigits (appUrl "/call") $
+        speak "Meaningful conversation. Press 1 to call again."
     ("/disconnect", Params {callUuidParam = Just callUuid, durationParam = Just duration}) -> do
       _ <- execute conn updateCaller (duration, callUuid)
       pure xmlResponseOk
@@ -63,6 +67,13 @@ dbUrl :: IO BS.ByteString
 dbUrl = do
   envUrl <- lookupEnv "DATABASE_URL"
   return $ BS.packChars $ fromMaybe "postgresql://localhost/multi_targeter" envUrl
+
+outcomeText :: BS.ByteString -> BS.ByteString
+outcomeText digit =
+  case digit of
+    "1" -> "conversation"
+    "2" -> "hangup"
+    _ -> "unknown"
 
 data Params =
   Params
@@ -74,6 +85,7 @@ data Params =
     , dialBLegUUIDParam :: Maybe BS.ByteString
     , dialHangupCauseParam :: Maybe BS.ByteString
     , dialStatusParam :: Maybe BS.ByteString
+    , digitsParam :: Maybe BS.ByteString
     }
 
 buildParams :: APIGatewayProxyRequest Text -> Params
@@ -87,6 +99,7 @@ buildParams request =
     , dialBLegUUIDParam = lookupBody request "DialBLegUUID"
     , dialHangupCauseParam = lookupBody request "DialHangupCause"
     , dialStatusParam = lookupBody request "DialStatus"
+    , digitsParam = lookupBody request "Digits"
     }
 
 lookupParam :: APIGatewayProxyRequest Text -> BS.ByteString -> Maybe BS.ByteString
@@ -118,6 +131,11 @@ updateCall conn callParams = do
       conn
       "update calls set call_uuid = ?, hangup_cause = ?, status = ?, ended_at = now() where id = ?"
       callParams
+  return ()
+
+recordOutcome :: Connection -> (BS.ByteString, BS.ByteString) -> IO ()
+recordOutcome conn params = do
+  _ <- execute conn "update calls set outcome = ? where id = ?" params
   return ()
 
 insertCaller :: Query

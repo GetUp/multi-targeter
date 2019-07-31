@@ -82,6 +82,22 @@ main = do
               reqResponse <- handler $ Mocks.request "/survey" queryParams busyCallParams
               reqResponse `shouldNotMatchBody` "<Speak>The call has ended.</Speak>"
               reqResponse `shouldMatchBody` "<Redirect>https://apig.com/test/call</Redirect>"
+      describe "/survey_response" $ do
+        let callerId = 15
+        let postParams digit = [("Digits", bShow digit)]
+        before_ (surveyEndpointSetup conn callerId) $ do
+          it "should record the call outcome" $ do
+            [Only callId] <- insertTestCall conn callerId
+            let queryParams = [("call_id", Just $ bShow callId)]
+            _ <- handler $ Mocks.request "/survey_response" queryParams (postParams 1)
+            [Only outcome] <- query conn "select outcome from calls where id = ?" [callId] :: IO [Only Text]
+            outcome `shouldBe` "conversation"
+          it "should allow 1 to be pressed to call again" $ do
+            [Only callId] <- insertTestCall conn callerId
+            let queryParams = [("call_id", Just $ bShow callId)]
+            reqResponse <- handler $ Mocks.request "/survey_response" queryParams (postParams 1)
+            reqResponse `shouldMatchBody` "<GetDigits action=\"https://apig.com/test/call\""
+          -- it "should redirect to /thanks"
       describe "/disconnect" $ do
         let callUuid = "xxx"
         let postParams = [("CallUUID", callUuid), ("Duration", "23")]
