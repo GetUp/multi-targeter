@@ -10,12 +10,6 @@ import Test.Hspec
 import Handler
 import Mocks
 
-shouldMatchBody :: APIGatewayProxyResponse Text -> Text -> Expectation
-shouldMatchBody (APIGatewayProxyResponse _ _ (Just (TextValue body))) fragment =
-  unpack body `shouldContain` unpack fragment
-shouldMatchBody (APIGatewayProxyResponse 404 _ _) _ = error "response was 404"
-shouldMatchBody _ _ = error "Request was probably malformed"
-
 main :: IO ()
 main = do
   url <- dbUrl
@@ -53,17 +47,17 @@ main = do
             target_id `shouldBe` 1
       describe "/survey" $ do
         let callerId = 15
-        let postParams =
+        let postParams status =
               [ ("DialALegUUID", "xxxxx")
               , ("DialBLegUUID", "yyyyy")
               , ("DialHangupCause", "NORMAL_CLEARING")
-              , ("DialStatus", "completed")
+              , ("DialStatus", status)
               ]
         before_ (surveyEndpointSetup conn callerId) $ do
           it "should update the call record" $ do
             [Only callId] <- insertTestCall conn callerId
             let queryParams = [("call_id", Just $ bShow callId)]
-            _ <- handler $ Mocks.request "/survey" queryParams postParams
+            _ <- handler $ Mocks.request "/survey" queryParams (postParams "completed")
             let callQuery =
                   query conn "select target_id, status, hangup_cause, call_uuid from calls where id = ?" [callId]
             [(target_id, status, hangup_cause, call_uuid)] <- callQuery :: IO [(Int, Text, Text, Text)]
@@ -71,12 +65,23 @@ main = do
             status `shouldBe` "completed"
             hangup_cause `shouldBe` "NORMAL_CLEARING"
             call_uuid `shouldBe` "yyyyy"
-          it "should announce that the call has ended and redirect TODO: ask survey" $ do
-            [Only callId] <- insertTestCall conn callerId
-            let queryParams = [("call_id", Just $ bShow callId)]
-            reqResponse <- handler $ Mocks.request "/survey" queryParams postParams
-            reqResponse `shouldMatchBody` "<Speak>The call has ended.</Speak>"
-            reqResponse `shouldMatchBody` "<Redirect>https://apig.com/test/call</Redirect>"
+          context "when the call connected and completed normally" $ do
+            let completedCallParams = postParams "completed"
+            it "should announce that the call has ended and ask for the outcome" $ do
+              [Only callId] <- insertTestCall conn callerId
+              let queryParams = [("call_id", Just $ bShow callId)]
+              reqResponse <- handler $ Mocks.request "/survey" queryParams completedCallParams
+              reqResponse `shouldMatchBody` "<Speak>The call has ended."
+              reqResponse `shouldMatchBody`
+                ("<GetDigits action=\"https://apig.com/test/survey_response?call_id=" <> tShow callId)
+          context "when the call was not answered" $ do
+            let busyCallParams = postParams "busy"
+            it "should not announce anything, just redirect back to /call" $ do
+              [Only callId] <- insertTestCall conn callerId
+              let queryParams = [("call_id", Just $ bShow callId)]
+              reqResponse <- handler $ Mocks.request "/survey" queryParams busyCallParams
+              reqResponse `shouldNotMatchBody` "<Speak>The call has ended.</Speak>"
+              reqResponse `shouldMatchBody` "<Redirect>https://apig.com/test/call</Redirect>"
       describe "/disconnect" $ do
         let callUuid = "xxx"
         let postParams = [("CallUUID", callUuid), ("Duration", "23")]
@@ -138,3 +143,15 @@ flushDb conn = do
 
 bShow :: Int -> BS.ByteString
 bShow = BS.packChars . show
+
+shouldMatchBody :: APIGatewayProxyResponse Text -> Text -> Expectation
+shouldMatchBody (APIGatewayProxyResponse _ _ (Just (TextValue body))) fragment =
+  unpack body `shouldContain` unpack fragment
+shouldMatchBody (APIGatewayProxyResponse 404 _ _) _ = error "response was 404"
+shouldMatchBody _ _ = error "Request was probably malformed"
+
+shouldNotMatchBody :: APIGatewayProxyResponse Text -> Text -> Expectation
+shouldNotMatchBody (APIGatewayProxyResponse _ _ (Just (TextValue body))) fragment =
+  unpack body `shouldNotContain` unpack fragment
+shouldNotMatchBody (APIGatewayProxyResponse 404 _ _) _ = error "response was 404"
+shouldNotMatchBody _ _ = error "Request was probably malformed"

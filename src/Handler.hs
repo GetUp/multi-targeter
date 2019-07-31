@@ -47,9 +47,13 @@ handler request = do
                        , dialStatusParam = Just dialStatus
                        }) -> do
       _ <- updateCall conn (dialBLegUUID, dialHangupCause, dialStatus, callId)
-      pure $ xmlResponse $ plivoResponse $ do
-        speak "The call has ended."
-        redirect $ appUrl "/call"
+      case dialStatus of
+        "completed" ->
+          let responseUrl = appUrl "/survey_response?call_id=" <> wrap callId
+           in pure $ xmlResponse $ plivoResponse $ getDigits responseUrl $
+              speak
+                "The call has ended. If you had a meaningful conversation, press 1. If you were hung up on, press 2."
+        _ -> pure $ xmlResponse $ plivoResponse $ redirect $ appUrl "/call"
     ("/disconnect", Params {callUuidParam = Just callUuid, durationParam = Just duration}) -> do
       _ <- execute conn updateCaller (duration, callUuid)
       pure xmlResponseOk
@@ -136,6 +140,11 @@ plivoResponse = LazyText.toStrict . renderText def . document "Response"
 
 speak :: Text -> XML
 speak = Text.XML.Writer.element "Speak" . content
+
+getDigits :: Text -> XML -> XML
+getDigits url inner =
+  let options = [("action", url), ("retries", "3"), ("numDigits", "1")]
+   in Text.XML.Writer.elementA "GetDigits" options inner
 
 redirect :: Text -> XML
 redirect = Text.XML.Writer.element "Redirect" . content
