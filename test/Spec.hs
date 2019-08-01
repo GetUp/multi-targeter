@@ -21,7 +21,7 @@ main = do
         let postParams = [("CallUUID", "xxxxx"), ("From", "61411111111")]
         it "should give an intro and then redirect to the first call" $ do
           reqResponse <- handler $ Mocks.request "/connect" queryParams postParams
-          reqResponse `shouldMatchBody` "<Speak>Welcome to the Test campaign.</Speak>"
+          reqResponse `shouldMatchBody` "<Speak voice=\"Polly.Brian\">Welcome to the Test campaign.</Speak>"
           reqResponse `shouldMatchBody` "<Redirect>https://apig.com/test/call</Redirect>"
         it "should create a caller record" $ do
           _ <- handler $ Mocks.request "/connect" queryParams postParams
@@ -36,7 +36,7 @@ main = do
           it "should dial the target number" $ do
             reqResponse <- handler $ Mocks.request "/call" [] postParams
             [Only callId] <- query_ conn "select id from calls order by created_at desc limit 1" :: IO [Only Int]
-            reqResponse `shouldMatchBody` "<Speak>Calling Test Target"
+            reqResponse `shouldMatchBody` "<Speak voice=\"Polly.Brian\">Calling Test Target"
             reqResponse `shouldMatchBody`
               ("<Dial action=\"https://apig.com/test/survey?call_id=" <> tShow callId <>
                "\" hangupOnStar=\"true\" timeLimit=\"1800\" timeout=\"30\"><Number>61400000000")
@@ -49,20 +49,20 @@ main = do
             it "should tell the caller and redirect to thanks" $ do
               _ <- insertTestCall conn 5
               reqResponse <- handler $ Mocks.request "/call" [] postParams
-              reqResponse `shouldMatchBody` "<Speak>All the targets have been called."
+              reqResponse `shouldMatchBody` "<Speak voice=\"Polly.Brian\">All the targets have been called."
               reqResponse `shouldMatchBody` "<Redirect>https://apig.com/test/thanks</Redirect>"
           context "when the target has already been called by a caller with the same number" $
             it "should tell the caller and redirect to thanks" $ do
               _ <- insertTestCaller conn 9
               _ <- insertTestCall conn 9
               reqResponse <- handler $ Mocks.request "/call" [] postParams
-              reqResponse `shouldMatchBody` "<Speak>All the targets have been called."
+              reqResponse `shouldMatchBody` "<Speak voice=\"Polly.Brian\">All the targets have been called."
               reqResponse `shouldMatchBody` "<Redirect>https://apig.com/test/thanks</Redirect>"
           context "when the target is not active" $
             it "should tell the caller and redirect to thanks" $ do
               _ <- execute_ conn "update targets set active = false"
               reqResponse <- handler $ Mocks.request "/call" [] postParams
-              reqResponse `shouldMatchBody` "<Speak>All the targets have been called."
+              reqResponse `shouldMatchBody` "<Speak voice=\"Polly.Brian\">All the targets have been called."
               reqResponse `shouldMatchBody` "<Redirect>https://apig.com/test/thanks</Redirect>"
       describe "/survey" $ do
         let callerId = 15
@@ -90,7 +90,7 @@ main = do
               [Only callId] <- insertTestCall conn callerId
               let queryParams = [("call_id", Just $ bShow callId)]
               reqResponse <- handler $ Mocks.request "/survey" queryParams completedCallParams
-              reqResponse `shouldMatchBody` "<Speak>The call has ended."
+              reqResponse `shouldMatchBody` "<Speak voice=\"Polly.Brian\">The call has ended."
               reqResponse `shouldMatchBody`
                 ("<GetDigits action=\"https://apig.com/test/survey_response?call_id=" <> tShow callId)
               reqResponse `shouldMatchBody` "</GetDigits><Redirect>https://apig.com/test/thanks</Redirect>"
@@ -100,7 +100,7 @@ main = do
               [Only callId] <- insertTestCall conn callerId
               let queryParams = [("call_id", Just $ bShow callId)]
               reqResponse <- handler $ Mocks.request "/survey" queryParams busyCallParams
-              reqResponse `shouldNotMatchBody` "<Speak>The call has ended.</Speak>"
+              reqResponse `shouldNotMatchBody` "<Speak voice=\"Polly.Brian\">The call has ended.</Speak>"
               reqResponse `shouldMatchBody` "<Redirect>https://apig.com/test/call</Redirect>"
       describe "/survey_response" $ do
         let callerId = 15

@@ -185,7 +185,7 @@ plivoResponse :: XML -> Text
 plivoResponse = LazyText.toStrict . renderText def . document "Response"
 
 speak :: Text -> XML
-speak = Text.XML.Writer.element "Speak" . content
+speak = Text.XML.Writer.elementA "Speak" [("voice", "Polly.Brian")]
 
 callAgainDigits :: Text -> XML -> XML
 callAgainDigits url inner =
