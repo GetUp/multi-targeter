@@ -36,11 +36,17 @@ handler request = do
         redirect $ appUrl "/call"
     ("/call", Params {callUuidParam = Just callUuid}) -> do
       [Only callerId] <- selectCaller conn callUuid
-      [(targetId, targetName, targetNumber)] <- selectTarget conn
-      [Only callId] <- insertCall conn (callerId, targetId)
-      pure $ xmlResponse $ plivoResponse $ do
-        speak $ "Calling the " <> targetName
-        dial (appUrl "/survey?call_id=" <> tShow callId) targetNumber
+      target <- selectTargetNotCalledByCaller conn callerId
+      case target of
+        [(targetId, targetName, targetNumber)] -> do
+          [Only callId] <- insertCall conn (callerId, targetId)
+          pure $ xmlResponse $ plivoResponse $ do
+            speak $ "Calling the " <> targetName
+            dial (appUrl "/survey?call_id=" <> tShow callId) targetNumber
+        _ ->
+          pure $ xmlResponse $ plivoResponse $ do
+            speak "All the targets have been called. Great work!"
+            redirect $ appUrl "/thanks"
     ("/survey", Params { callIdParam = Just callId
                        , dialBLegUUIDParam = Just dialBLegUUID
                        , dialHangupCauseParam = Just dialHangupCause
@@ -119,9 +125,15 @@ lookupBody request param = do
   let params = parseSimpleQuery $ encodeUtf8 body
   lookup param params
 
-selectTarget :: Connection -> IO [(Int, Text, Text)]
-selectTarget conn =
-  query_ conn "select id, name, number from targets order by random() limit 1" :: IO [(Int, Text, Text)]
+selectTargetNotCalledByCaller :: Connection -> Int -> IO [(Int, Text, Text)]
+selectTargetNotCalledByCaller conn callerId =
+  query
+    conn
+    "select targets.id, name, number from targets \
+    \left join calls on target_id = targets.id and caller_id = ? \
+    \where active and calls.id is null \
+    \order by random() limit 1"
+    [callerId] :: IO [(Int, Text, Text)]
 
 selectCaller :: Connection -> BS.ByteString -> IO [Only Int]
 selectCaller conn callUuid = query conn "select id from callers where call_uuid = ? limit 1" [callUuid] :: IO [Only Int]

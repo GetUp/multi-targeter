@@ -11,6 +11,7 @@ create table targets (
   id serial primary key,
   campaign_id int not null references campaigns(id),
   number text not null,
+  active boolean not null default false,
   name text not null
 );
 

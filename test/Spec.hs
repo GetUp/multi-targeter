@@ -45,6 +45,18 @@ main = do
             [(caller_id, target_id)] <- query_ conn "select caller_id, target_id from calls limit 1" :: IO [(Int, Int)]
             caller_id `shouldBe` 5
             target_id `shouldBe` 1
+          context "when the target has already been called by the caller" $ do
+            it "should tell the caller and redirect to thanks" $ do
+              _ <- insertTestCall conn 5
+              reqResponse <- handler $ Mocks.request "/call" [] postParams
+              reqResponse `shouldMatchBody` "<Speak>All the targets have been called."
+              reqResponse `shouldMatchBody` "<Redirect>https://apig.com/test/thanks</Redirect>"
+          context "when the target is not active" $ do
+            it "should tell the caller and redirect to thanks" $ do
+              _ <- execute_ conn "update targets set active = false"
+              reqResponse <- handler $ Mocks.request "/call" [] postParams
+              reqResponse `shouldMatchBody` "<Speak>All the targets have been called."
+              reqResponse `shouldMatchBody` "<Redirect>https://apig.com/test/thanks</Redirect>"
       describe "/survey" $ do
         let callerId = 15
         let postParams status =
@@ -144,7 +156,7 @@ insertTestCaller conn callerId = do
 insertTestTarget :: Connection -> IO ()
 insertTestTarget conn = do
   let testTarget = (1 :: Int, "61400000000" :: String, "Test Target" :: String)
-  _ <- execute conn "insert into targets (campaign_id, number, name) values (?, ?, ?)" testTarget
+  _ <- execute conn "insert into targets (campaign_id, number, name, active) values (?, ?, ?, true)" testTarget
   return ()
 
 setupDb :: Connection -> IO ()
