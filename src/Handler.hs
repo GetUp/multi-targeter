@@ -29,10 +29,10 @@ handler request = do
                         , callUuidParam = Just callUuid
                         }) -> do
       _ <- execute conn insertCaller (fromNumber, wrap campaignId, callUuid)
+      [(campaignName, instructions)] <- selectCampaign conn campaignId
       pure $ xmlResponse $ plivoResponse $ do
-        speak "Welcome to the Test Campaign."
-        speak
-          "We will attempt to connect to you to one of their 40 offices. If someone picks up and you have conversation, afterwards we will ask you questions about how it went. You then have the option to try another office. Press the star key to hang up at any point during the conversation. Remember to be polite."
+        speak $ "Welcome to the " <> campaignName <> " campaign."
+        speak instructions
         redirect $ appUrl "/call"
     ("/call", Params {callUuidParam = Just callUuid}) -> do
       [(callerId, number)] <- selectCaller conn callUuid
@@ -124,6 +124,10 @@ lookupBody request param = do
   body <- request ^. requestBody
   let params = parseSimpleQuery $ encodeUtf8 body
   lookup param params
+
+selectCampaign :: Connection -> BS.ByteString -> IO [(Text, Text)]
+selectCampaign conn campaignId =
+  query conn "select name, instructions from campaigns where id = ?" [campaignId] :: IO [(Text, Text)]
 
 selectTargetNotCalledByCaller :: Connection -> Text -> IO [(Int, Text, Text)]
 selectTargetNotCalledByCaller conn number =
