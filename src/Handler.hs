@@ -41,7 +41,7 @@ handler request = do
         [(targetId, targetName, targetNumber)] -> do
           [Only callId] <- insertCall conn (callerId, targetId)
           pure $ xmlResponse $ plivoResponse $ do
-            speak $ "Calling the " <> targetName
+            speak $ "Calling " <> targetName
             dial (appUrl "/survey?call_id=" <> tShow callId) targetNumber
         _ ->
           pure $ xmlResponse $ plivoResponse $ do
@@ -186,7 +186,7 @@ speak = Text.XML.Writer.element "Speak" . content
 
 callAgainDigits :: Text -> XML -> XML
 callAgainDigits url inner =
-  let options = [("action", url), ("finishOnKey", "*"), ("numDigits", "1"), ("retries", "1"), ("validDigits", "1*")]
+  let options = [("action", url), ("finishOnKey", "*"), ("numDigits", "1"), ("retries", "2"), ("validDigits", "1*")]
    in Text.XML.Writer.elementA "GetDigits" options inner
 
 getDigits :: Text -> XML -> XML

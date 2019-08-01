@@ -36,7 +36,7 @@ main = do
           it "should dial the target number" $ do
             reqResponse <- handler $ Mocks.request "/call" [] postParams
             [Only callId] <- query_ conn "select id from calls order by created_at desc limit 1" :: IO [Only Int]
-            reqResponse `shouldMatchBody` "<Speak>Calling the Test Target"
+            reqResponse `shouldMatchBody` "<Speak>Calling Test Target"
             reqResponse `shouldMatchBody`
               ("<Dial action=\"https://apig.com/test/survey?call_id=" <> tShow callId <>
                "\" hangupOnStar=\"true\" timeLimit=\"1800\" timeout=\"30\"><Number>61400000000")
@@ -45,20 +45,20 @@ main = do
             [(caller_id, target_id)] <- query_ conn "select caller_id, target_id from calls limit 1" :: IO [(Int, Int)]
             caller_id `shouldBe` 5
             target_id `shouldBe` 1
-          context "when the target has already been called by the caller" $ do
+          context "when the target has already been called by the caller" $
             it "should tell the caller and redirect to thanks" $ do
               _ <- insertTestCall conn 5
               reqResponse <- handler $ Mocks.request "/call" [] postParams
               reqResponse `shouldMatchBody` "<Speak>All the targets have been called."
               reqResponse `shouldMatchBody` "<Redirect>https://apig.com/test/thanks</Redirect>"
-          context "when the target has already been called by a caller with the same number" $ do
+          context "when the target has already been called by a caller with the same number" $
             it "should tell the caller and redirect to thanks" $ do
               _ <- insertTestCaller conn 9
               _ <- insertTestCall conn 9
               reqResponse <- handler $ Mocks.request "/call" [] postParams
               reqResponse `shouldMatchBody` "<Speak>All the targets have been called."
               reqResponse `shouldMatchBody` "<Redirect>https://apig.com/test/thanks</Redirect>"
-          context "when the target is not active" $ do
+          context "when the target is not active" $
             it "should tell the caller and redirect to thanks" $ do
               _ <- execute_ conn "update targets set active = false"
               reqResponse <- handler $ Mocks.request "/call" [] postParams
