@@ -67,9 +67,12 @@ handler request = do
       pure $ xmlResponse $ plivoResponse $ do
         let callUrl = appUrl "/call"
         callAgainDigits callUrl $
-          speak "Outcome received. To call another office, press 1. To end the calling session, press star."
+          speak "Outcome received. Thank you. To call another office, press 1. To end the calling session, press star."
         redirect $ appUrl "/thanks"
-    ("/thanks", _) -> pure $ xmlResponse $ plivoResponse $ speak "Thanks for calling. Goodbye."
+    ("/thanks", _) ->
+      pure $ xmlResponse $ plivoResponse $
+      speak
+        "Thank you for calling. We will contact you about next steps on the campaign. Until then, goodbye and have a great day!"
     ("/disconnect", Params {callUuidParam = Just callUuid, durationParam = Just duration}) -> do
       _ <- execute conn updateCaller (duration, callUuid)
       pure xmlResponseOk
