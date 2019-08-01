@@ -23,6 +23,8 @@ main = do
           reqResponse <- handler $ Mocks.request "/connect" queryParams postParams
           reqResponse `shouldMatchBody` "<Speak voice=\"Polly.Brian\">Welcome to the Test campaign.</Speak>"
           reqResponse `shouldMatchBody` "<Redirect>https://apig.com/test/call</Redirect>"
+          reqResponse `shouldMatchBody`
+            "Test instructions</Speak><Wait length=\"1\"/><Speak voice=\"Polly.Brian\">Second sentence"
         it "should create a caller record" $ do
           _ <- handler $ Mocks.request "/connect" queryParams postParams
           [(callerNumber, campaign_id, callUuid)] <-
@@ -169,7 +171,7 @@ insertTestTarget conn = do
 setupDb :: Connection -> IO ()
 setupDb conn = do
   flushDb conn
-  let campaign = ("active" :: String, "Test" :: String, "Test instructions" :: String)
+  let campaign = ("active" :: String, "Test" :: String, "Test instructions. Second sentence" :: String)
   _ <- execute conn "insert into campaigns (status, name, instructions) values (?, ?, ?)" campaign
   return ()
 

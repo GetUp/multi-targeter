@@ -30,9 +30,10 @@ handler request = do
                         }) -> do
       _ <- execute conn insertCaller (fromNumber, wrap campaignId, callUuid)
       [(campaignName, instructions)] <- selectCampaign conn campaignId
+      let sentences = Data.Text.splitOn ". " instructions
       pure $ xmlResponse $ plivoResponse $ do
         speak $ "Welcome to the " <> campaignName <> " campaign."
-        speak instructions
+        mapM_ toXML $ Prelude.concatMap (\x -> [speak x, wait]) sentences
         redirect $ appUrl "/call"
     ("/call", Params {callUuidParam = Just callUuid}) -> do
       [(callerId, number)] <- selectCaller conn callUuid
@@ -186,6 +187,9 @@ plivoResponse = LazyText.toStrict . renderText def . document "Response"
 
 speak :: Text -> XML
 speak = Text.XML.Writer.elementA "Speak" [("voice", "Polly.Brian")]
+
+wait :: XML
+wait = Text.XML.Writer.elementA "Wait" [("length", "1")] Text.XML.Writer.empty
 
 callAgainDigits :: Text -> XML -> XML
 callAgainDigits url inner =
