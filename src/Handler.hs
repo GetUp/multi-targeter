@@ -31,11 +31,14 @@ handler request = do
       _ <- execute conn insertCaller (fromNumber, wrap campaignId, callUuid)
       [(campaignName, instructions)] <- selectCampaign conn campaignId
       let sentences = Data.Text.splitOn ". " instructions
+      let callUrl = appUrl "/call"
       pure $ xmlResponse $ plivoResponse $ do
         speak $ "Welcome to the " <> campaignName <> " campaign."
         wait
-        mapM_ toXML $ Prelude.concatMap (\x -> [speak x, wait]) sentences
-        redirect $ appUrl "/call"
+        callDigits callUrl $ do
+          mapM_ toXML $ Prelude.concatMap (\x -> [speak x, wait]) sentences
+          speak "To make your first call, press 1"
+        redirect $ appUrl "/thanks"
     ("/call", Params {callUuidParam = Just callUuid}) -> do
       [(callerId, number)] <- selectCaller conn callUuid
       target <- selectTargetNotCalledByCaller conn number
@@ -68,7 +71,7 @@ handler request = do
       _ <- recordOutcome conn (outcomeText digits, callId)
       pure $ xmlResponse $ plivoResponse $ do
         let callUrl = appUrl "/call"
-        callAgainDigits callUrl $
+        callDigits callUrl $
           speak "Outcome received. Thank you. To call another office, press 1. To end the calling session, press star."
         redirect $ appUrl "/thanks"
     ("/thanks", _) ->
@@ -192,9 +195,9 @@ speak = Text.XML.Writer.elementA "Speak" [("voice", "Polly.Brian")]
 wait :: XML
 wait = Text.XML.Writer.elementA "Wait" [("length", "1")] Text.XML.Writer.empty
 
-callAgainDigits :: Text -> XML -> XML
-callAgainDigits url inner =
-  let options = [("action", url), ("finishOnKey", "*"), ("numDigits", "1"), ("retries", "2"), ("validDigits", "1*")]
+callDigits :: Text -> XML -> XML
+callDigits url inner =
+  let options = [("action", url), ("finishOnKey", "*"), ("numDigits", "1"), ("retries", "3"), ("validDigits", "1*")]
    in Text.XML.Writer.elementA "GetDigits" options inner
 
 getDigits :: Text -> XML -> XML

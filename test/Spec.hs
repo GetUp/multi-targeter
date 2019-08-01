@@ -19,12 +19,13 @@ main = do
       describe "/connect" $ do
         let queryParams = [("campaign_id", Just "1")]
         let postParams = [("CallUUID", "xxxxx"), ("From", "61411111111")]
-        it "should give an intro and then redirect to the first call" $ do
+        it "should give an intro, proceed to the first call when 1 is pressed, redirect if no input" $ do
           reqResponse <- handler $ Mocks.request "/connect" queryParams postParams
           reqResponse `shouldMatchBody` "<Speak voice=\"Polly.Brian\">Welcome to the Test campaign.</Speak>"
-          reqResponse `shouldMatchBody` "<Redirect>https://apig.com/test/call</Redirect>"
+          reqResponse `shouldMatchBody` "<GetDigits action=\"https://apig.com/test/call\""
           reqResponse `shouldMatchBody`
             "Test instructions</Speak><Wait length=\"1\"/><Speak voice=\"Polly.Brian\">Second sentence"
+          reqResponse `shouldMatchBody` "<Redirect>https://apig.com/test/thanks</Redirect>"
         it "should create a caller record" $ do
           _ <- handler $ Mocks.request "/connect" queryParams postParams
           [(callerNumber, campaign_id, callUuid)] <-
