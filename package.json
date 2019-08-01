@@ -10,6 +10,7 @@
   },
   "scripts": {
     "start": "ghcid --command='stack ghci src/Handler.hs test/Spec.hs' --test=main",
-    "deploy": "set -u && DATABASE_URL=$MULTI_TARGETER_DB_URL ./node_modules/.bin/sls deploy"
+    "deploy": "set -u && DATABASE_URL=$MULTI_TARGETER_DB_URL ./node_modules/.bin/sls deploy",
+    "deployprod": "set -u && DATABASE_URL=$MULTI_TARGETER_PROD_DB_URL ./node_modules/.bin/sls deploy --stage prod"
   }
 }
