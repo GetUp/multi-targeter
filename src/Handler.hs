@@ -193,7 +193,7 @@ redirect = Text.XML.Writer.element "Redirect" . content
 dial :: Text -> Text -> XML
 dial url number =
   let inner = Text.XML.Writer.element "Number" $ content number
-      options = [("action", url), ("hangupOnStar", "true")]
+      options = [("action", url), ("hangupOnStar", "true"), ("timeout", "30"), ("timeLimit", "1800")]
    in Text.XML.Writer.elementA "Dial" options inner
 
 tShow :: Int -> Text
