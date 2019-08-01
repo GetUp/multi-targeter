@@ -64,7 +64,8 @@ handler request = do
            in pure $ xmlResponse $ plivoResponse $ do
                 speak "The call has ended."
                 getDigits responseUrl $
-                  speak "If you had a meaningful conversation, press 1. If you were hung up on, press 2."
+                  speak
+                    "If you had a meaningful conversation, press 1. If reached an answering machine, press 2. If you were hung up on, press 3."
                 redirect $ appUrl "/thanks"
         _ -> pure $ xmlResponse $ plivoResponse $ redirect $ appUrl "/call"
     ("/survey_response", Params {callIdParam = Just callId, digitsParam = Just digits}) -> do
