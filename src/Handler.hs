@@ -65,7 +65,7 @@ handler request = do
                 speak "The call has ended."
                 getDigits responseUrl $
                   speak
-                    "If you had a meaningful conversation, press 1. If reached an answering machine, press 2. If you were hung up on, press 3."
+                    "If you had a meaningful conversation, press 1. If you reached an answering machine, press 2. If you were hung up on, press 3."
                 redirect $ appUrl "/thanks"
         _ -> pure $ xmlResponse $ plivoResponse $ redirect $ appUrl "/call"
     ("/survey_response", Params {callIdParam = Just callId, digitsParam = Just digits}) -> do
@@ -93,7 +93,8 @@ outcomeText :: BS.ByteString -> BS.ByteString
 outcomeText digit =
   case digit of
     "1" -> "conversation"
-    "2" -> "hangup"
+    "2" -> "answering machine"
+    "3" -> "hung up on"
     _ -> "unknown"
 
 data Params =
