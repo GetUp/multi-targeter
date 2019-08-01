@@ -62,17 +62,17 @@ handler request = do
         "completed" ->
           let responseUrl = appUrl "/survey_response?call_id=" <> wrap callId
            in pure $ xmlResponse $ plivoResponse $ do
+                speak "The call has ended."
                 getDigits responseUrl $
-                  speak
-                    "The call has ended. If you had a meaningful conversation, press 1. If you were hung up on, press 2."
+                  speak "If you had a meaningful conversation, press 1. If you were hung up on, press 2."
                 redirect $ appUrl "/thanks"
         _ -> pure $ xmlResponse $ plivoResponse $ redirect $ appUrl "/call"
     ("/survey_response", Params {callIdParam = Just callId, digitsParam = Just digits}) -> do
       _ <- recordOutcome conn (outcomeText digits, callId)
+      let callUrl = appUrl "/call"
       pure $ xmlResponse $ plivoResponse $ do
-        let callUrl = appUrl "/call"
-        callDigits callUrl $
-          speak "Outcome received. Thank you. To call another office, press 1. To end the calling session, press star."
+        speak "Outcome received. Thank you."
+        callDigits callUrl $ speak "To call another office, press 1. To end the calling session, press star."
         redirect $ appUrl "/thanks"
     ("/thanks", _) ->
       pure $ xmlResponse $ plivoResponse $
