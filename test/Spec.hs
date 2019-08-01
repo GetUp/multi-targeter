@@ -51,6 +51,13 @@ main = do
               reqResponse <- handler $ Mocks.request "/call" [] postParams
               reqResponse `shouldMatchBody` "<Speak>All the targets have been called."
               reqResponse `shouldMatchBody` "<Redirect>https://apig.com/test/thanks</Redirect>"
+          context "when the target has already been called by a caller with the same number" $ do
+            it "should tell the caller and redirect to thanks" $ do
+              _ <- insertTestCaller conn 9
+              _ <- insertTestCall conn 9
+              reqResponse <- handler $ Mocks.request "/call" [] postParams
+              reqResponse `shouldMatchBody` "<Speak>All the targets have been called."
+              reqResponse `shouldMatchBody` "<Redirect>https://apig.com/test/thanks</Redirect>"
           context "when the target is not active" $ do
             it "should tell the caller and redirect to thanks" $ do
               _ <- execute_ conn "update targets set active = false"

@@ -35,8 +35,8 @@ handler request = do
           "We will attempt to connect to you to one of their 40 offices. If someone picks up and you have conversation, afterwards we will ask you questions about how it went. You then have the option to try another office. Press the star key to hang up at any point during the conversation. Remember to be polite."
         redirect $ appUrl "/call"
     ("/call", Params {callUuidParam = Just callUuid}) -> do
-      [Only callerId] <- selectCaller conn callUuid
-      target <- selectTargetNotCalledByCaller conn callerId
+      [(callerId, number)] <- selectCaller conn callUuid
+      target <- selectTargetNotCalledByCaller conn number
       case target of
         [(targetId, targetName, targetNumber)] -> do
           [Only callId] <- insertCall conn (callerId, targetId)
@@ -125,18 +125,21 @@ lookupBody request param = do
   let params = parseSimpleQuery $ encodeUtf8 body
   lookup param params
 
-selectTargetNotCalledByCaller :: Connection -> Int -> IO [(Int, Text, Text)]
-selectTargetNotCalledByCaller conn callerId =
+selectTargetNotCalledByCaller :: Connection -> Text -> IO [(Int, Text, Text)]
+selectTargetNotCalledByCaller conn number =
   query
     conn
     "select targets.id, name, number from targets \
-    \left join calls on target_id = targets.id and caller_id = ? \
+    \left join calls on target_id = targets.id \
+    \  and caller_id in ( \
+    \    select id from callers where number = ? \
+    \  ) \
     \where active and calls.id is null \
     \order by random() limit 1"
-    [callerId] :: IO [(Int, Text, Text)]
+    [number] :: IO [(Int, Text, Text)]
 
-selectCaller :: Connection -> BS.ByteString -> IO [Only Int]
-selectCaller conn callUuid = query conn "select id from callers where call_uuid = ? limit 1" [callUuid] :: IO [Only Int]
+selectCaller :: Connection -> BS.ByteString -> IO [(Int, Text)]
+selectCaller conn callUuid = query conn "select id, number from callers where call_uuid = ? limit 1" [callUuid]
 
 insertCall :: Connection -> (Int, Int) -> IO [Only Int]
 insertCall conn call =
