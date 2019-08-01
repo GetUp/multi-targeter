@@ -9,6 +9,7 @@
     "serverless-offline": "^5.8.0"
   },
   "scripts": {
-    "start": "ghcid --command='stack ghci src/Handler.hs test/Spec.hs' --test=main"
+    "start": "ghcid --command='stack ghci src/Handler.hs test/Spec.hs' --test=main",
+    "deploy": "set -u && DATABASE_URL=$MULTI_TARGETER_DB_URL ./node_modules/.bin/sls deploy"
   }
 }
