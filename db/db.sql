@@ -1,3 +1,5 @@
+set search_path = 'multi_targeter';
+
 drop table if exists campaigns cascade;
 create table campaigns (
   id serial primary key,
