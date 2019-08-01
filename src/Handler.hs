@@ -33,6 +33,7 @@ handler request = do
       let sentences = Data.Text.splitOn ". " instructions
       pure $ xmlResponse $ plivoResponse $ do
         speak $ "Welcome to the " <> campaignName <> " campaign."
+        wait
         mapM_ toXML $ Prelude.concatMap (\x -> [speak x, wait]) sentences
         redirect $ appUrl "/call"
     ("/call", Params {callUuidParam = Just callUuid}) -> do
