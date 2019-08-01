@@ -67,13 +67,14 @@ main = do
             call_uuid `shouldBe` "yyyyy"
           context "when the call connected and completed normally" $ do
             let completedCallParams = postParams "completed"
-            it "should announce that the call has ended and ask for the outcome" $ do
+            it "should say call has ended, ask for the outcome, then redirect if no input received" $ do
               [Only callId] <- insertTestCall conn callerId
               let queryParams = [("call_id", Just $ bShow callId)]
               reqResponse <- handler $ Mocks.request "/survey" queryParams completedCallParams
               reqResponse `shouldMatchBody` "<Speak>The call has ended."
               reqResponse `shouldMatchBody`
                 ("<GetDigits action=\"https://apig.com/test/survey_response?call_id=" <> tShow callId)
+              reqResponse `shouldMatchBody` "</GetDigits><Redirect>https://apig.com/test/thanks</Redirect>"
           context "when the call was not answered" $ do
             let busyCallParams = postParams "busy"
             it "should not announce anything, just redirect back to /call" $ do
@@ -97,7 +98,7 @@ main = do
             let queryParams = [("call_id", Just $ bShow callId)]
             reqResponse <- handler $ Mocks.request "/survey_response" queryParams (postParams 1)
             reqResponse `shouldMatchBody` "<GetDigits action=\"https://apig.com/test/call\""
-            reqResponse `shouldMatchBody` "validDigits=\"1\""
+            reqResponse `shouldMatchBody` "validDigits=\"1*\""
             reqResponse `shouldMatchBody` "</GetDigits><Redirect>https://apig.com/test/thanks</Redirect>"
       describe "/disconnect" $ do
         let callUuid = "xxx"

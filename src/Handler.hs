@@ -50,15 +50,18 @@ handler request = do
       case dialStatus of
         "completed" ->
           let responseUrl = appUrl "/survey_response?call_id=" <> wrap callId
-           in pure $ xmlResponse $ plivoResponse $ getDigits responseUrl $
-              speak
-                "The call has ended. If you had a meaningful conversation, press 1. If you were hung up on, press 2."
+           in pure $ xmlResponse $ plivoResponse $ do
+                getDigits responseUrl $
+                  speak
+                    "The call has ended. If you had a meaningful conversation, press 1. If you were hung up on, press 2."
+                redirect $ appUrl "/thanks"
         _ -> pure $ xmlResponse $ plivoResponse $ redirect $ appUrl "/call"
     ("/survey_response", Params {callIdParam = Just callId, digitsParam = Just digits}) -> do
       _ <- recordOutcome conn (outcomeText digits, callId)
       pure $ xmlResponse $ plivoResponse $ do
         let callUrl = appUrl "/call"
-        callAgainDigits callUrl $ speak "Meaningful conversation. Press 1 to call again."
+        callAgainDigits callUrl $
+          speak "Outcome received. To call another office, press 1. To end the calling session, press star."
         redirect $ appUrl "/thanks"
     ("/thanks", _) -> pure $ xmlResponse $ plivoResponse $ speak "Thanks for calling. Goodbye."
     ("/disconnect", Params {callUuidParam = Just callUuid, durationParam = Just duration}) -> do
@@ -164,7 +167,7 @@ speak = Text.XML.Writer.element "Speak" . content
 
 callAgainDigits :: Text -> XML -> XML
 callAgainDigits url inner =
-  let options = [("action", url), ("numDigits", "1"), ("retries", "1"), ("validDigits", "1")]
+  let options = [("action", url), ("finishOnKey", "*"), ("numDigits", "1"), ("retries", "1"), ("validDigits", "1*")]
    in Text.XML.Writer.elementA "GetDigits" options inner
 
 getDigits :: Text -> XML -> XML
