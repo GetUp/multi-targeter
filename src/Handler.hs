@@ -70,11 +70,13 @@ handler request = do
         _ -> pure $ xmlResponse $ plivoResponse $ redirect $ appUrl "/call"
     ("/survey_response", Params {callIdParam = Just callId, digitsParam = Just digits}) -> do
       _ <- recordOutcome conn (outcomeText digits, callId)
-      let callUrl = appUrl "/call"
+      let nextUrl = appUrl "/next"
       pure $ xmlResponse $ plivoResponse $ do
         speak "Outcome received. Thank you."
-        callDigits callUrl $ speak "To call another office, press 1. To end the calling session, press star."
+        callDigits nextUrl $ speak "To call another office, press 1. To end the calling session, press star."
         redirect $ appUrl "/thanks"
+    ("/next", Params {digitsParam = Just "1"}) -> pure $ xmlResponse $ plivoResponse $ redirect $ appUrl "/call"
+    ("/next", Params {digitsParam = Just "*"}) -> pure $ xmlResponse $ plivoResponse $ redirect $ appUrl "/thanks"
     ("/thanks", _) ->
       pure $ xmlResponse $ plivoResponse $
       speak
@@ -199,7 +201,7 @@ wait = Text.XML.Writer.elementA "Wait" [("length", "1")] Text.XML.Writer.empty
 
 callDigits :: Text -> XML -> XML
 callDigits url inner =
-  let options = [("action", url), ("finishOnKey", "*"), ("numDigits", "1"), ("retries", "3"), ("validDigits", "1*")]
+  let options = [("action", url), ("numDigits", "1"), ("retries", "3"), ("validDigits", "1*")]
    in Text.XML.Writer.elementA "GetDigits" options inner
 
 getDigits :: Text -> XML -> XML

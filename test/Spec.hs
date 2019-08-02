@@ -119,9 +119,18 @@ main = do
             [Only callId] <- insertTestCall conn callerId
             let queryParams = [("call_id", Just $ bShow callId)]
             reqResponse <- handler $ Mocks.request "/survey_response" queryParams (postParams 1)
-            reqResponse `shouldMatchBody` "<GetDigits action=\"https://apig.com/test/call\""
+            reqResponse `shouldMatchBody` "<GetDigits action=\"https://apig.com/test/next\""
             reqResponse `shouldMatchBody` "validDigits=\"1*\""
             reqResponse `shouldMatchBody` "</GetDigits><Redirect>https://apig.com/test/thanks</Redirect>"
+      describe "/next" $ do
+        context "with digit 1" $ do
+          it "should redirect to /call" $ do
+            reqResponse <- handler $ Mocks.request "/next" [] [("Digits", "1")]
+            reqResponse `shouldMatchBody` "<Redirect>https://apig.com/test/call</Redirect>"
+        context "with digit *" $ do
+          it "should redirect to /thanks" $ do
+            reqResponse <- handler $ Mocks.request "/next" [] [("Digits", "*")]
+            reqResponse `shouldMatchBody` "<Redirect>https://apig.com/test/thanks</Redirect>"
       describe "/disconnect" $ do
         let callUuid = "xxx"
         let postParams = [("CallUUID", callUuid), ("Duration", "23")]
