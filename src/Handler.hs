@@ -67,7 +67,10 @@ handler request = do
                   speak
                     "If you had a meaningful conversation, press 1. If you reached an answering machine, press 2. If you were hung up on, press 3."
                 redirect $ appUrl "/thanks"
-        _ -> pure $ xmlResponse $ plivoResponse $ redirect $ appUrl "/call"
+        _ ->
+          pure $ xmlResponse $ plivoResponse $ do
+            speak "The office did not pickup."
+            redirect $ appUrl "/call"
     ("/survey_response", Params {callIdParam = Just callId, digitsParam = Just digits}) -> do
       _ <- recordOutcome conn (outcomeText digits, callId)
       let nextUrl = appUrl "/next"
