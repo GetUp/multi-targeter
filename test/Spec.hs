@@ -145,7 +145,10 @@ main = do
           [Only duration] <-
             query conn "select duration from callers where call_uuid = ? and ended_at is not null limit 1" [callUuid] :: IO [Only Int]
           duration `shouldBe` 23
-      describe "/" $ it "returns the root path" $ handler (Mocks.request "/" [] []) `shouldReturn` xmlResponseOk
+      describe "/stats" $
+        it "should return a count of all calls" $ do
+          reqResponse <- handler $ Mocks.request "/stats" [] []
+          reqResponse `shouldMatchBody` "Calls: 0"
 
 callEndpointSetup :: Connection -> Int -> IO ()
 callEndpointSetup conn callerId = do
