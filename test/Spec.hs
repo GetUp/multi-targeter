@@ -145,6 +145,7 @@ main = do
           [Only duration] <-
             query conn "select duration from callers where call_uuid = ? and ended_at is not null limit 1" [callUuid] :: IO [Only Int]
           duration `shouldBe` 23
+      describe "/" $ it "returns the root path" $ handler (Mocks.request "/" [] []) `shouldReturn` xmlResponseOk
 
 callEndpointSetup :: Connection -> Int -> IO ()
 callEndpointSetup conn callerId = do

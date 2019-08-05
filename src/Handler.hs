@@ -87,6 +87,7 @@ handler request = do
     ("/disconnect", Params {callUuidParam = Just callUuid, durationParam = Just duration}) -> do
       _ <- execute conn updateCaller (duration, callUuid)
       pure xmlResponseOk
+    ("/", _) -> pure xmlResponseOk
     (_, _) -> pure response404
 
 dbUrl :: IO BS.ByteString
