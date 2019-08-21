@@ -33,6 +33,14 @@ main = do
           callerNumber `shouldBe` "61411111111"
           campaign_id `shouldBe` 1
           callUuid `shouldBe` "xxxxx"
+        describe "with a recorded audio intro" $ do
+          before_ (insertCampaignWithAudioIntro conn) $ do
+            let audioCampaignId = [("campaign_id", Just "99")]
+            it "should play the audio instead" $ do
+              reqResponse <- handler $ Mocks.request "/connect" audioCampaignId postParams
+              reqResponse `shouldMatchBody` "<GetDigits action=\"https://apig.com/test/call\""
+              reqResponse `shouldMatchBody` "<Play>https://example.com/intro.mp3</Play><Wait length=\"1\"/>"
+              reqResponse `shouldMatchBody` "<Redirect>https://apig.com/test/thanks</Redirect>"
       describe "/call" $
         before_ (callEndpointSetup conn 5) $ do
           let postParams = [("CallUUID", "xxxxx"), ("From", "61411111111")]
@@ -180,6 +188,21 @@ insertTestTarget :: Connection -> IO ()
 insertTestTarget conn = do
   let testTarget = (1 :: Int, "61400000000" :: String, "Test Target" :: String)
   _ <- execute conn "insert into targets (campaign_id, number, name, active) values (?, ?, ?, true)" testTarget
+  return ()
+
+insertCampaignWithAudioIntro :: Connection -> IO ()
+insertCampaignWithAudioIntro conn = do
+  let campaign =
+        ( 99 :: Int
+        , "active" :: String
+        , "Test Audio Intro" :: String
+        , "Unused instructions" :: String
+        , "https://example.com/intro.mp3" :: String)
+  _ <-
+    execute
+      conn
+      "insert into campaigns (id, status, name, instructions, audio_instructions_url) values (?, ?, ?, ?, ?)"
+      campaign
   return ()
 
 setupDb :: Connection -> IO ()

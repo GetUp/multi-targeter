@@ -29,16 +29,26 @@ handler request = do
                         , callUuidParam = Just callUuid
                         }) -> do
       _ <- execute conn insertCaller (fromNumber, wrap campaignId, callUuid)
-      [(campaignName, instructions)] <- selectCampaign conn campaignId
-      let sentences = Data.Text.splitOn ". " instructions
+      [campaign] <- selectCampaign conn campaignId
       let callUrl = appUrl "/call"
-      pure $ xmlResponse $ plivoResponse $ do
-        speak $ "Welcome to the " <> campaignName <> " campaign."
-        wait
-        callDigits callUrl $ do
-          mapM_ toXML $ Prelude.concatMap (\x -> [speak x, wait]) sentences
-          speak "To make your first call, press 1"
-        redirect $ appUrl "/thanks"
+      case campaign of
+        (_, _, Just audio_url) ->
+          pure $ xmlResponse $ plivoResponse $ do
+            callDigits callUrl $ do
+              play audio_url
+              wait
+              speak "To make your first call, press 1"
+            redirect $ appUrl "/thanks"
+        (campaignName, Just instructions, _) ->
+          let sentences = Data.Text.splitOn ". " instructions
+           in pure $ xmlResponse $ plivoResponse $ do
+                speak $ "Welcome to the " <> campaignName <> " campaign."
+                wait
+                callDigits callUrl $ do
+                  mapM_ toXML $ Prelude.concatMap (\x -> [speak x, wait]) sentences
+                  speak "To make your first call, press 1"
+                redirect $ appUrl "/thanks"
+        _ -> pure $ xmlResponse $ plivoResponse $ do speak $ "This campaign is not configured correctly. Good bye"
     ("/call", Params {callUuidParam = Just callUuid}) -> do
       [(callerId, number)] <- selectCaller conn callUuid
       target <- selectTargetNotCalledByCaller conn number
@@ -143,9 +153,10 @@ lookupBody request param = do
   let params = parseSimpleQuery $ encodeUtf8 body
   lookup param params
 
-selectCampaign :: Connection -> BS.ByteString -> IO [(Text, Text)]
+selectCampaign :: Connection -> BS.ByteString -> IO [(Text, Maybe Text, Maybe Text)]
 selectCampaign conn campaignId =
-  query conn "select name, instructions from campaigns where id = ?" [campaignId] :: IO [(Text, Text)]
+  let sql = "select name, instructions, audio_instructions_url from campaigns where id = ?"
+   in query conn sql [campaignId] :: IO [(Text, Maybe Text, Maybe Text)]
 
 selectTargetNotCalledByCaller :: Connection -> Text -> IO [(Int, Text, Text)]
 selectTargetNotCalledByCaller conn number =
@@ -198,6 +209,9 @@ xmlResponse text = xmlResponseOk & responseBody ?~ text
 
 plivoResponse :: XML -> Text
 plivoResponse = LazyText.toStrict . renderText def . document "Response"
+
+play :: Text -> XML
+play = Text.XML.Writer.element "Play" . content
 
 speak :: Text -> XML
 speak = Text.XML.Writer.elementA "Speak" [("voice", "Polly.Brian")]
