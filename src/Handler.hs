@@ -214,7 +214,7 @@ play :: Text -> XML
 play = Text.XML.Writer.element "Play" . content
 
 speak :: Text -> XML
-speak = Text.XML.Writer.elementA "Speak" [("voice", "Polly.Brian")]
+speak = Text.XML.Writer.elementA "Speak" [("language", "en-GB"), ("voice", "MAN")]
 
 wait :: XML
 wait = Text.XML.Writer.elementA "Wait" [("length", "1")] Text.XML.Writer.empty
