@@ -48,6 +48,7 @@ main = do
               reqResponse <- handler $ Mocks.request "/connect" queryParams postParams
               reqResponse `shouldMatchBody` ">Welcome back!"
               reqResponse `shouldMatchBody` "If you had a meaningful conversation"
+              reqResponse `shouldMatchBody` "</GetDigits><Redirect>"
       describe "/call" $ do
         let callerId = 5
         let campaignId = 2

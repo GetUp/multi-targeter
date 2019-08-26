@@ -31,10 +31,11 @@ handler request = do
       case previousCall of
         [Just (callId, targetName)] -> do
           let responseUrl = appUrl "/survey_response?call_id=" <> pack (show callId)
-          pure $ xmlResponse $ plivoResponse $ getDigits responseUrl $ do
-            wait
-            speak $ "Welcome back! How did the call to " <> targetName <> " go?"
-            speak survey
+          pure $ xmlResponse $ plivoResponse $ do
+            getDigits responseUrl $ do
+              wait
+              speak $ "Welcome back! How did the call to " <> targetName <> " go?"
+              speak survey
             redirect $ appUrl "/thanks"
         _ -> do
           [campaign] <- selectCampaign conn campaignId
