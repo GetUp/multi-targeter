@@ -31,7 +31,7 @@ main = do
           callerNumber `shouldBe` "61411111111"
           campaign_id `shouldBe` 1
           callUuid `shouldBe` "xxxxx"
-        describe "with a recorded audio intro" $
+        context "with a recorded audio intro" $
           before_ (insertCampaignWithAudioIntro conn) $ do
             let audioCampaignId = [("campaign_id", Just "99")]
             it "should play the audio instead" $ do
@@ -39,6 +39,15 @@ main = do
               reqResponse `shouldMatchBody` "<GetDigits action=\"https://apig.com/test/call\""
               reqResponse `shouldMatchBody` "<Play>https://example.com/intro.mp3</Play><Wait length=\"1\"/>"
               reqResponse `shouldMatchBody` "<Redirect>https://apig.com/test/thanks</Redirect>"
+        context "when the caller accidentally hung up after a call" $ do
+          let callerId = 2
+          let campaignId = 1
+          let targetId = 1
+          before_ (accidentalHangup conn callerId campaignId targetId) $
+            it "should say welcome back & ask for survey" $ do
+              reqResponse <- handler $ Mocks.request "/connect" queryParams postParams
+              reqResponse `shouldMatchBody` ">Welcome back!"
+              reqResponse `shouldMatchBody` "If you had a meaningful conversation"
       describe "/call" $ do
         let callerId = 5
         let campaignId = 2
@@ -161,6 +170,12 @@ main = do
         it "should return a count of all calls" $ do
           reqResponse <- handler $ Mocks.request "/stats" [] []
           reqResponse `shouldMatchBody` "Calls: 0"
+
+accidentalHangup :: Connection -> Int -> Int -> Int -> IO ()
+accidentalHangup conn callerId campaignId targetId = do
+  insertTestCaller conn callerId campaignId
+  _ <- insertTestCall conn callerId targetId
+  return ()
 
 callEndpointSetup :: Connection -> Int -> Int -> Text -> IO ()
 callEndpointSetup conn callerId campaignId targetNumber = do

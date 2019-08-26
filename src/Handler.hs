@@ -27,26 +27,36 @@ handler request = do
                         , callUuidParam = Just callUuid
                         }) -> do
       _ <- execute conn insertCaller (fromNumber, wrap campaignId, callUuid)
-      [campaign] <- selectCampaign conn campaignId
-      let callUrl = appUrl "/call"
-      case campaign of
-        (_, _, Just audio_url) ->
-          pure $ xmlResponse $ plivoResponse $ do
-            callDigits callUrl $ do
-              play audio_url
-              wait
-              speak "To make your first call, press 1"
+      previousCall <- checkForIncompleteSurvey conn campaignId fromNumber
+      case previousCall of
+        [Just (callId, targetName)] -> do
+          let responseUrl = appUrl "/survey_response?call_id=" <> pack (show callId)
+          pure $ xmlResponse $ plivoResponse $ getDigits responseUrl $ do
+            wait
+            speak $ "Welcome back! How did the call to " <> targetName <> " go?"
+            speak survey
             redirect $ appUrl "/thanks"
-        (campaignName, Just instructions, _) ->
-          let sentences = Data.Text.splitOn ". " instructions
-           in pure $ xmlResponse $ plivoResponse $ do
-                speak $ "Welcome to the " <> campaignName <> " campaign."
-                wait
+        _ -> do
+          [campaign] <- selectCampaign conn campaignId
+          let callUrl = appUrl "/call"
+          case campaign of
+            (_, _, Just audio_url) ->
+              pure $ xmlResponse $ plivoResponse $ do
                 callDigits callUrl $ do
-                  mapM_ toXML $ Prelude.concatMap (\x -> [speak x, wait]) sentences
+                  play audio_url
+                  wait
                   speak "To make your first call, press 1"
                 redirect $ appUrl "/thanks"
-        _ -> pure $ xmlResponse $ plivoResponse $ speak "This campaign is not configured correctly. Good bye"
+            (campaignName, Just instructions, _) ->
+              let sentences = Data.Text.splitOn ". " instructions
+               in pure $ xmlResponse $ plivoResponse $ do
+                    speak $ "Welcome to the " <> campaignName <> " campaign."
+                    wait
+                    callDigits callUrl $ do
+                      mapM_ toXML $ Prelude.concatMap (\x -> [speak x, wait]) sentences
+                      speak "To make your first call, press 1"
+                    redirect $ appUrl "/thanks"
+            _ -> pure $ xmlResponse $ plivoResponse $ speak "This campaign is not configured correctly. Good bye"
     ("/call", Params {callUuidParam = Just callUuid}) -> do
       [(callerId, campaignId, callerNumber)] <- selectCaller conn callUuid
       target <- selectTargetNotCalledByCaller conn callerNumber campaignId
@@ -71,9 +81,7 @@ handler request = do
           let responseUrl = appUrl "/survey_response?call_id=" <> wrap callId
            in pure $ xmlResponse $ plivoResponse $ do
                 speak "The call has ended."
-                getDigits responseUrl $
-                  speak
-                    "If you had a meaningful conversation, press 1. If you reached an answering machine, press 2. If you were hung up on, press 3."
+                getDigits responseUrl $ speak survey
                 redirect $ appUrl "/thanks"
         _ ->
           pure $ xmlResponse $ plivoResponse $ do
@@ -107,6 +115,10 @@ dbUrl :: IO BS.ByteString
 dbUrl = do
   envUrl <- lookupEnv "DATABASE_URL"
   return $ BS.packChars $ fromMaybe "postgresql://localhost/multi_targeter" envUrl
+
+survey :: Text
+survey =
+  "If you had a meaningful conversation, press 1. If you reached an answering machine, press 2. If you were hung up on, press 3."
 
 outcomeText :: BS.ByteString -> BS.ByteString
 outcomeText digit =
@@ -173,6 +185,21 @@ selectTargetNotCalledByCaller conn callerNumber campaignId =
     \order by count(c1.*), random() \
     \limit 1"
     (callerNumber, campaignId) :: IO [(Int, Text, Text)]
+
+checkForIncompleteSurvey :: Connection -> BS.ByteString -> BS.ByteString -> IO [Maybe (Int, Text)]
+checkForIncompleteSurvey conn campaignId callerNumber =
+  query
+    conn
+    "select c.id, t.name \
+    \from callers cr \
+    \join calls c on c.caller_id = cr.id \
+    \join targets t on c.target_id = t.id \
+    \where c.outcome is null \
+    \  and cr.number = ? \
+    \  and cr.campaign_id = ? \
+    \order by cr.id desc \
+    \limit 1"
+    (callerNumber, campaignId) :: IO [Maybe (Int, Text)]
 
 selectCaller :: Connection -> BS.ByteString -> IO [(Int, Int, Text)]
 selectCaller conn callUuid =
