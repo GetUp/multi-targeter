@@ -1,5 +1,3 @@
-{-# LANGUAGE OverloadedStrings #-}
-
 import AWSLambda.Events.APIGateway
 import Data.Aeson.TextValue
 import qualified Data.ByteString.Internal as BS
@@ -33,7 +31,7 @@ main = do
           callerNumber `shouldBe` "61411111111"
           campaign_id `shouldBe` 1
           callUuid `shouldBe` "xxxxx"
-        describe "with a recorded audio intro" $ do
+        describe "with a recorded audio intro" $
           before_ (insertCampaignWithAudioIntro conn) $ do
             let audioCampaignId = [("campaign_id", Just "99")]
             it "should play the audio instead" $ do
@@ -131,11 +129,11 @@ main = do
             reqResponse `shouldMatchBody` "validDigits=\"1*\""
             reqResponse `shouldMatchBody` "</GetDigits><Redirect>https://apig.com/test/thanks</Redirect>"
       describe "/next" $ do
-        context "with digit 1" $ do
+        context "with digit 1" $
           it "should redirect to /call" $ do
             reqResponse <- handler $ Mocks.request "/next" [] [("Digits", "1")]
             reqResponse `shouldMatchBody` "<Redirect>https://apig.com/test/call</Redirect>"
-        context "with digit *" $ do
+        context "with digit *" $
           it "should redirect to /thanks" $ do
             reqResponse <- handler $ Mocks.request "/next" [] [("Digits", "*")]
             reqResponse `shouldMatchBody` "<Redirect>https://apig.com/test/thanks</Redirect>"

@@ -1,10 +1,10 @@
 name:                multi-targeter
 version:             0.1.0.0
-github:              "githubuser/multi-targeter"
+github:              "GetUp/multi-targeter"
 license:             BSD3
-author:              "Author name here"
-maintainer:          "example@example.com"
-copyright:           "2019 Author name here"
+author:              "GetUp Tech"
+maintainer:          "tim@getup.org.au"
+copyright:           "GetUp"
 
 extra-source-files:
 - README.md
@@ -17,7 +17,7 @@ extra-source-files:
 # To avoid duplicated efforts in documentation and dealing with the
 # complications of embedding Haddock markup inside cabal files, it is
 # common to point users to the README.md file.
-description:         Please see the README on GitHub at <https://github.com/githubuser/multi-targeter#readme>
+description:         Please see the README on GitHub at <https://github.com/getup/multi-targeter#readme>
 
 dependencies:
 - base >= 4.7 && < 5
@@ -34,9 +34,15 @@ dependencies:
 
 library:
   source-dirs: src
+  default-extensions:
+  - OverloadedStrings
   ghc-options:
-    - -Wall
-    - -Werror
+  - -Wall
+  - -Werror
+  - -Wcompat
+  - -Wincomplete-record-updates
+  - -Wincomplete-uni-patterns
+  - -Wredundant-constraints
 
 executables:
   multi-targeter-exe:

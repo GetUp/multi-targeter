@@ -1,5 +1,3 @@
-{-# LANGUAGE OverloadedStrings #-}
-
 module Handler where
 
 import AWSLambda.Events.APIGateway
@@ -48,7 +46,7 @@ handler request = do
                   mapM_ toXML $ Prelude.concatMap (\x -> [speak x, wait]) sentences
                   speak "To make your first call, press 1"
                 redirect $ appUrl "/thanks"
-        _ -> pure $ xmlResponse $ plivoResponse $ do speak $ "This campaign is not configured correctly. Good bye"
+        _ -> pure $ xmlResponse $ plivoResponse $ speak "This campaign is not configured correctly. Good bye"
     ("/call", Params {callUuidParam = Just callUuid}) -> do
       [(callerId, number)] <- selectCaller conn callUuid
       target <- selectTargetNotCalledByCaller conn number
