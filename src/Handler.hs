@@ -97,7 +97,7 @@ handler request = do
       pure xmlResponseOk
     ("/stats", _) -> do
       [Only calls] <- query_ conn "select count(*) from calls" :: IO [Only Int]
-      pure $ xmlResponse $ plivoResponse $ speak $ "Calls: " <> (pack $ show calls)
+      pure $ xmlResponse $ plivoResponse $ speak $ "Calls: " <> pack (show calls)
     (_, _) -> pure response404
 
 dbUrl :: IO BS.ByteString
