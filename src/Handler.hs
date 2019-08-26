@@ -48,8 +48,8 @@ handler request = do
                 redirect $ appUrl "/thanks"
         _ -> pure $ xmlResponse $ plivoResponse $ speak "This campaign is not configured correctly. Good bye"
     ("/call", Params {callUuidParam = Just callUuid}) -> do
-      [(callerId, number)] <- selectCaller conn callUuid
-      target <- selectTargetNotCalledByCaller conn number
+      [(callerId, campaignId, callerNumber)] <- selectCaller conn callUuid
+      target <- selectTargetNotCalledByCaller conn callerNumber campaignId
       case target of
         [(targetId, targetName, targetNumber)] -> do
           [Only callId] <- insertCall conn (callerId, targetId)
@@ -156,8 +156,8 @@ selectCampaign conn campaignId =
   let sql = "select name, instructions, audio_instructions_url from campaigns where id = ?"
    in query conn sql [campaignId] :: IO [(Text, Maybe Text, Maybe Text)]
 
-selectTargetNotCalledByCaller :: Connection -> Text -> IO [(Int, Text, Text)]
-selectTargetNotCalledByCaller conn number =
+selectTargetNotCalledByCaller :: Connection -> Text -> Int -> IO [(Int, Text, Text)]
+selectTargetNotCalledByCaller conn callerNumber campaignId =
   query
     conn
     "select targets.id, name, number from targets \
@@ -165,12 +165,13 @@ selectTargetNotCalledByCaller conn number =
     \  and caller_id in ( \
     \    select id from callers where number = ? \
     \  ) \
-    \where active and calls.id is null \
+    \where campaign_id = ? and active and calls.id is null \
     \order by random() limit 1"
-    [number] :: IO [(Int, Text, Text)]
+    (callerNumber, campaignId) :: IO [(Int, Text, Text)]
 
-selectCaller :: Connection -> BS.ByteString -> IO [(Int, Text)]
-selectCaller conn callUuid = query conn "select id, number from callers where call_uuid = ? limit 1" [callUuid]
+selectCaller :: Connection -> BS.ByteString -> IO [(Int, Int, Text)]
+selectCaller conn callUuid =
+  query conn "select id, campaign_id, number from callers where call_uuid = ? limit 1" [callUuid]
 
 insertCall :: Connection -> (Int, Int) -> IO [Only Int]
 insertCall conn call =

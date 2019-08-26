@@ -39,8 +39,12 @@ main = do
               reqResponse `shouldMatchBody` "<GetDigits action=\"https://apig.com/test/call\""
               reqResponse `shouldMatchBody` "<Play>https://example.com/intro.mp3</Play><Wait length=\"1\"/>"
               reqResponse `shouldMatchBody` "<Redirect>https://apig.com/test/thanks</Redirect>"
-      describe "/call" $
-        before_ (callEndpointSetup conn 5) $ do
+      describe "/call" $ do
+        let callerId = 5
+        let campaignId = 2
+        let targetId = 2
+        let targetNumber = "61400000000"
+        before_ (callEndpointSetup conn callerId campaignId targetNumber) $ do
           let postParams = [("CallUUID", "xxxxx"), ("From", "61411111111")]
           it "should dial the target number" $ do
             reqResponse <- handler $ Mocks.request "/call" [] postParams
@@ -52,18 +56,18 @@ main = do
           it "should log the call" $ do
             _ <- handler $ Mocks.request "/call" [] postParams
             [(caller_id, target_id)] <- query_ conn "select caller_id, target_id from calls limit 1" :: IO [(Int, Int)]
-            caller_id `shouldBe` 5
-            target_id `shouldBe` 1
+            caller_id `shouldBe` callerId
+            target_id `shouldBe` targetId
           context "when the target has already been called by the caller" $
             it "should tell the caller and redirect to thanks" $ do
-              _ <- insertTestCall conn 5
+              _ <- insertTestCall conn callerId targetId
               reqResponse <- handler $ Mocks.request "/call" [] postParams
               reqResponse `shouldMatchBody` "<Speak language=\"en-GB\" voice=\"MAN\">All the targets have been called."
               reqResponse `shouldMatchBody` "<Redirect>https://apig.com/test/thanks</Redirect>"
           context "when the target has already been called by a caller with the same number" $
             it "should tell the caller and redirect to thanks" $ do
-              _ <- insertTestCaller conn 9
-              _ <- insertTestCall conn 9
+              _ <- insertTestCaller conn 9 campaignId
+              _ <- insertTestCall conn 9 targetId
               reqResponse <- handler $ Mocks.request "/call" [] postParams
               reqResponse `shouldMatchBody` "<Speak language=\"en-GB\" voice=\"MAN\">All the targets have been called."
               reqResponse `shouldMatchBody` "<Redirect>https://apig.com/test/thanks</Redirect>"
@@ -75,6 +79,7 @@ main = do
               reqResponse `shouldMatchBody` "<Redirect>https://apig.com/test/thanks</Redirect>"
       describe "/survey" $ do
         let callerId = 15
+        let targetId = 1
         let postParams status =
               [ ("DialALegUUID", "xxxxx")
               , ("DialBLegUUID", "yyyyy")
@@ -83,7 +88,7 @@ main = do
               ]
         before_ (surveyEndpointSetup conn callerId) $ do
           it "should update the call record" $ do
-            [Only callId] <- insertTestCall conn callerId
+            [Only callId] <- insertTestCall conn callerId targetId
             let queryParams = [("call_id", Just $ bShow callId)]
             _ <- handler $ Mocks.request "/survey" queryParams (postParams "completed")
             let callQuery =
@@ -96,7 +101,7 @@ main = do
           context "when the call connected and completed normally" $ do
             let completedCallParams = postParams "completed"
             it "should say call has ended, ask for the outcome, then redirect if no input received" $ do
-              [Only callId] <- insertTestCall conn callerId
+              [Only callId] <- insertTestCall conn callerId targetId
               let queryParams = [("call_id", Just $ bShow callId)]
               reqResponse <- handler $ Mocks.request "/survey" queryParams completedCallParams
               reqResponse `shouldMatchBody` "<Speak language=\"en-GB\" voice=\"MAN\">The call has ended."
@@ -106,23 +111,24 @@ main = do
           context "when the call was not answered" $ do
             let busyCallParams = postParams "busy"
             it "should not announce anything, just redirect back to /call" $ do
-              [Only callId] <- insertTestCall conn callerId
+              [Only callId] <- insertTestCall conn callerId targetId
               let queryParams = [("call_id", Just $ bShow callId)]
               reqResponse <- handler $ Mocks.request "/survey" queryParams busyCallParams
               reqResponse `shouldNotMatchBody` "<Speak language=\"en-GB\" voice=\"MAN\">The call has ended.</Speak>"
               reqResponse `shouldMatchBody` "<Redirect>https://apig.com/test/call</Redirect>"
       describe "/survey_response" $ do
         let callerId = 15
+        let targetId = 1
         let postParams digit = [("Digits", bShow digit)]
         before_ (surveyEndpointSetup conn callerId) $ do
           it "should record the call outcome" $ do
-            [Only callId] <- insertTestCall conn callerId
+            [Only callId] <- insertTestCall conn callerId targetId
             let queryParams = [("call_id", Just $ bShow callId)]
             _ <- handler $ Mocks.request "/survey_response" queryParams (postParams 1)
             [Only outcome] <- query conn "select outcome from calls where id = ?" [callId] :: IO [Only Text]
             outcome `shouldBe` "conversation"
           it "should allow 1 (and only 1) to be pressed to call again then redirect to /thanks" $ do
-            [Only callId] <- insertTestCall conn callerId
+            [Only callId] <- insertTestCall conn callerId targetId
             let queryParams = [("call_id", Just $ bShow callId)]
             reqResponse <- handler $ Mocks.request "/survey_response" queryParams (postParams 1)
             reqResponse `shouldMatchBody` "<GetDigits action=\"https://apig.com/test/next\""
@@ -156,25 +162,26 @@ main = do
           reqResponse <- handler $ Mocks.request "/stats" [] []
           reqResponse `shouldMatchBody` "Calls: 0"
 
-callEndpointSetup :: Connection -> Int -> IO ()
-callEndpointSetup conn callerId = do
-  insertTestCaller conn callerId
-  insertTestTarget conn
+callEndpointSetup :: Connection -> Int -> Int -> Text -> IO ()
+callEndpointSetup conn callerId campaignId targetNumber = do
+  insertCampaign conn campaignId
+  insertTestCaller conn callerId campaignId
+  insertTestTarget conn campaignId targetNumber
 
 surveyEndpointSetup :: Connection -> Int -> IO ()
 surveyEndpointSetup conn callerId = do
-  insertTestCaller conn callerId
-  insertTestTarget conn
+  insertTestCaller conn callerId 1
+  insertTestTarget conn 1 "61400000000"
   -- insertTestCall conn callerId
 
-insertTestCall :: Connection -> Int -> IO [Only Int]
-insertTestCall conn callerId = do
-  let testCall = (callerId, 1 :: Int)
+insertTestCall :: Connection -> Int -> Int -> IO [Only Int]
+insertTestCall conn callerId targetId = do
+  let testCall = (callerId, targetId)
   query conn "insert into calls (caller_id, target_id, created_at) values (?, ?, now()) returning id" testCall :: IO [Only Int]
 
-insertTestCaller :: Connection -> Int -> IO ()
-insertTestCaller conn callerId = do
-  let testCaller = (callerId, 1 :: Int, "61411111111" :: String, "xxxxx" :: String)
+insertTestCaller :: Connection -> Int -> Int -> IO ()
+insertTestCaller conn callerId campaignId = do
+  let testCaller = (callerId, campaignId, "61411111111" :: String, "xxxxx" :: String)
   _ <-
     execute
       conn
@@ -182,10 +189,16 @@ insertTestCaller conn callerId = do
       testCaller
   return ()
 
-insertTestTarget :: Connection -> IO ()
-insertTestTarget conn = do
-  let testTarget = (1 :: Int, "61400000000" :: String, "Test Target" :: String)
+insertTestTarget :: Connection -> Int -> Text -> IO ()
+insertTestTarget conn campaignId targetNumber = do
+  let testTarget = (campaignId, targetNumber, "Test Target" :: String)
   _ <- execute conn "insert into targets (campaign_id, number, name, active) values (?, ?, ?, true)" testTarget
+  return ()
+
+insertCampaign :: Connection -> Int -> IO ()
+insertCampaign conn campaignId = do
+  let campaign = (campaignId, "active" :: String, "Test" :: String, "Test instructions. Second sentence" :: String)
+  _ <- execute conn "insert into campaigns (id, status, name, instructions) values (?, ?, ?, ?)" campaign
   return ()
 
 insertCampaignWithAudioIntro :: Connection -> IO ()
@@ -206,13 +219,14 @@ insertCampaignWithAudioIntro conn = do
 setupDb :: Connection -> IO ()
 setupDb conn = do
   flushDb conn
-  let campaign = ("active" :: String, "Test" :: String, "Test instructions. Second sentence" :: String)
-  _ <- execute conn "insert into campaigns (status, name, instructions) values (?, ?, ?)" campaign
+  let campaignId = 1
+  insertCampaign conn campaignId
+  insertTestTarget conn campaignId "61412345678"
   return ()
 
 flushDb :: Connection -> IO ()
 flushDb conn = do
-  _ <- execute_ conn "truncate targets, calls, callers, campaigns RESTART IDENTITY"
+  _ <- execute_ conn "truncate targets, calls, callers, campaigns restart identity"
   return ()
 
 bShow :: Int -> BS.ByteString
