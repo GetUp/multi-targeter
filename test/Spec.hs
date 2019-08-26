@@ -52,7 +52,7 @@ main = do
             reqResponse `shouldMatchBody` "<Speak language=\"en-GB\" voice=\"MAN\">Calling Test Target"
             reqResponse `shouldMatchBody`
               ("<Dial action=\"https://apig.com/test/survey?call_id=" <> tShow callId <>
-               "\" hangupOnStar=\"true\" timeLimit=\"1800\" timeout=\"30\"><Number>61400000000")
+               "\" callbackUrl=\"https://apig.com/test/log\" hangupOnStar=\"true\" timeLimit=\"1800\" timeout=\"30\"><Number>61400000000")
           it "should log the call" $ do
             _ <- handler $ Mocks.request "/call" [] postParams
             [(caller_id, target_id)] <- query_ conn "select caller_id, target_id from calls limit 1" :: IO [(Int, Int)]

@@ -55,7 +55,7 @@ handler request = do
           [Only callId] <- insertCall conn (callerId, targetId)
           pure $ xmlResponse $ plivoResponse $ do
             speak $ "Calling " <> targetName
-            dial (appUrl "/survey?call_id=" <> tShow callId) targetNumber
+            dial (appUrl "/survey?call_id=" <> tShow callId) targetNumber (appUrl "/log")
         _ ->
           pure $ xmlResponse $ plivoResponse $ do
             speak "All the targets have been called. Great work!"
@@ -98,6 +98,9 @@ handler request = do
     ("/stats", _) -> do
       [Only calls] <- query_ conn "select count(*) from calls" :: IO [Only Int]
       pure $ xmlResponse $ plivoResponse $ speak $ "Calls: " <> pack (show calls)
+    ("/log", _) -> do
+      print request
+      pure responseOK
     (_, _) -> pure response404
 
 dbUrl :: IO BS.ByteString
@@ -231,10 +234,16 @@ getDigits url inner =
 redirect :: Text -> XML
 redirect = Text.XML.Writer.element "Redirect" . content
 
-dial :: Text -> Text -> XML
-dial url number =
+dial :: Text -> Text -> Text -> XML
+dial url number callbackUrl =
   let inner = Text.XML.Writer.element "Number" $ content number
-      options = [("action", url), ("hangupOnStar", "true"), ("timeout", "30"), ("timeLimit", "1800")]
+      options =
+        [ ("action", url)
+        , ("hangupOnStar", "true")
+        , ("timeout", "30")
+        , ("timeLimit", "1800")
+        , ("callbackUrl", callbackUrl)
+        ]
    in Text.XML.Writer.elementA "Dial" options inner
 
 tShow :: Int -> Text
