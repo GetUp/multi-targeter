@@ -163,13 +163,15 @@ selectTargetNotCalledByCaller :: Connection -> Text -> Int -> IO [(Int, Text, Te
 selectTargetNotCalledByCaller conn callerNumber campaignId =
   query
     conn
-    "select targets.id, name, number from targets \
-    \left join calls on target_id = targets.id \
-    \  and caller_id in ( \
-    \    select id from callers where number = ? \
-    \  ) \
-    \where campaign_id = ? and active and calls.id is null \
-    \order by random() limit 1"
+    "select t.id, t.name, t.number \
+    \from targets t \
+    \left join calls c1 on c1.target_id = t.id \
+    \left join calls c2 on c2.target_id = t.id \
+    \  and c2.caller_id in (select id from callers where number = ?) \
+    \where campaign_id = ? and active and c2.id is null \
+    \group by 1,2,3 \
+    \order by count(c1.*), random() \
+    \limit 1"
     (callerNumber, campaignId) :: IO [(Int, Text, Text)]
 
 selectCaller :: Connection -> BS.ByteString -> IO [(Int, Int, Text)]
